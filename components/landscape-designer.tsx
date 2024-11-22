@@ -114,7 +114,10 @@ export function LandscapeDesignerComponent() {
       const data = await response.json();
       if (data.success) {
         setGeneratedImage(data.imagePath);
-        setHistory(prev => [data.imagePath, ...prev]);
+        setHistory(prev => {
+          const newHistory = [data.imagePath, ...prev];
+          return newHistory.slice(0, 48);
+        });
       } else {
         throw new Error(data.error);
       }
@@ -135,7 +138,10 @@ export function LandscapeDesignerComponent() {
       await new Promise(resolve => setTimeout(resolve, 3000)) // Simulating API call
       const editedImage = '/placeholder.png'
       setGeneratedImage(editedImage)
-      setHistory(prev => [editedImage, ...prev])
+      setHistory(prev => {
+        const newHistory = [editedImage, ...prev];
+        return newHistory.slice(0, 48);
+      });
     } catch (error) {
       console.error('Editing failed:', error)
       // TODO: Implement error handling
@@ -160,7 +166,7 @@ export function LandscapeDesignerComponent() {
         <Collapsible open={isGenerateOpen} onOpenChange={setIsGenerateOpen} className="mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl">效果图生成</CardTitle>
+              <CardTitle className="text-2xl">效果��生成</CardTitle>
               <CollapsibleTrigger>
                 {isGenerateOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </CollapsibleTrigger>
@@ -351,21 +357,23 @@ export function LandscapeDesignerComponent() {
         </div>
         <div className="mt-8">
           <h3 className="text-2xl font-semibold mb-4 text-gray-900">历史生成</h3>
-          <div className="grid grid-cols-4 gap-4">
-            {[...Array(24)].map((_, index) => (
-              <div 
-                key={index} 
-                className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
-                onClick={() => openImageInNewWindow(history[index] || '/placeholder.png')}
-              >
-                {history[index] ? (
-                  <img src={history[index]} alt={`History ${index}`} className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <p className="text-gray-500 text-sm">占位图</p>
-                )}
-              </div>
-            ))}
-          </div>
+          {history.length > 0 ? (
+            <div className="grid grid-cols-4 gap-4">
+              {history.slice(0, 48).map((imagePath, index) => (
+                <div 
+                  key={index} 
+                  className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
+                  onClick={() => openImageInNewWindow(imagePath)}
+                >
+                  <img src={imagePath} alt={`History ${index}`} className="w-full h-full object-cover rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+              <p className="text-gray-500">还没有进行过生成</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
