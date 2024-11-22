@@ -21,7 +21,7 @@ interface ImageUploaderProps {
 }
 
 const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploaderProps) => {
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setter: (value: string | null) => void) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, setter: (value: string | null) => void) => {
     if (!event.target.files) return
     const file = event.target.files[0]
     if (file) {
@@ -36,13 +36,34 @@ const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploader
         return
       }
 
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        if (typeof e.target?.result === 'string') {
-          setter(e.target.result)
+      // 创建 FormData 对象上传文件
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        // 上传文件到服务器
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        const data = await response.json()
+        
+        if (data.success) {
+          // 读取文件用于预览
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            if (typeof e.target?.result === 'string') {
+              setter(e.target.result)
+            }
+          }
+          reader.readAsDataURL(file)
+        } else {
+          throw new Error(data.error)
         }
+      } catch (error) {
+        console.error('Upload failed:', error)
+        alert('图片上传失败，请重试')
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -80,11 +101,14 @@ const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploader
   )
 }
 
+// 添加参考模式类型定义
+type ReferenceMode = 'ease in-out' | 'composition' | 'style transfer';
+
 export function LandscapeDesignerComponent() {
   const [apiKey, setApiKey] = useState('')
   const [promptText, setPromptText] = useState('')
   const [promptImage, setPromptImage] = useState<string | null>(null)
-  const [promptImageStrength, setPromptImageStrength] = useState(50)
+  const [promptImageStrength, setPromptImageStrength] = useState(1)
   const [generatedImage, setGeneratedImage] = useState('')
   const [editImage, setEditImage] = useState<string | null>(null)
   const [history, setHistory] = useState<string[]>([])
@@ -96,34 +120,55 @@ export function LandscapeDesignerComponent() {
   const [isEditOpen, setIsEditOpen] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [referenceMode, setReferenceMode] = useState<ReferenceMode>('ease in-out')
 
   const handleGenerate = async () => {
     if (!promptText.trim()) return
     setIsGenerating(true)
     try {
+      console.log('发送参数:', {
+        promptText,
+        hasReferenceImage: !!promptImage,
+        promptImageStrength,
+        referenceMode,
+      });
+
       const response = await fetch('/api/comfyui', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          promptText: promptText,
+          promptText,
+          hasReferenceImage: !!promptImage,
+          promptImageStrength,
+          referenceMode,
         }),
       });
       
       const data = await response.json();
       if (data.success) {
+        // 添加 workflow 日志输出
+        if (data.workflow) {
+          console.log('完整 Workflow 配置:', JSON.stringify(data.workflow, null, 2));
+        }
+        
+        console.log('生成成功:', {
+          imagePath: data.imagePath,
+        });
+        
         setGeneratedImage(data.imagePath);
         setHistory(prev => {
           const newHistory = [data.imagePath, ...prev];
           return newHistory.slice(0, 48);
         });
       } else {
+        console.error('生成失败:', data.error);
         throw new Error(data.error);
       }
     } catch (error) {
-      console.error('Generation failed:', error);
-      // TODO: 实现错误处理
+      console.error('生成过程出错:', error);
+      alert('生成失败，请重试');
     } finally {
       setIsGenerating(false);
     }
@@ -166,7 +211,7 @@ export function LandscapeDesignerComponent() {
         <Collapsible open={isGenerateOpen} onOpenChange={setIsGenerateOpen} className="mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl">效果��生成</CardTitle>
+              <CardTitle className="text-2xl">效果生成</CardTitle>
               <CollapsibleTrigger>
                 {isGenerateOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </CollapsibleTrigger>
@@ -185,12 +230,38 @@ export function LandscapeDesignerComponent() {
                 <ImageUploader image={promptImage} setImage={setPromptImage} label="提示词参考图" />
                 <div>
                   <Label className="text-sm mb-2">参考强度</Label>
+                  <span className="text-sm font-medium">{promptImageStrength.toFixed(1)}</span>
                   <Slider 
                     value={[promptImageStrength]} 
                     onValueChange={([value]) => setPromptImageStrength(value)} 
-                    max={100} 
-                    step={1} 
+                    max={2} 
+                    min={0}
+                    step={0.1} 
+                    className="mb-2"
                   />
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大</p>
+                  </div>
+                  
+                  {/* 添加参考模式选择 */}
+                  <div className="mt-4">
+                    <Label className="text-sm mb-2">参考模式</Label>
+                    <Select value={referenceMode} onValueChange={(value: ReferenceMode) => setReferenceMode(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择参考模式" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ease in-out">默认</SelectItem>
+                        <SelectItem value="composition">参考主体</SelectItem>
+                        <SelectItem value="style transfer">参考风格</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {referenceMode === 'ease in-out' && '默认模式：平衡参考图的整体影响'}
+                      {referenceMode === 'composition' && '参考主体：更强调参考图的主体的造型'}
+                      {referenceMode === 'style transfer' && '参考风格：更强调参考图的风格'}
+                    </p>
+                  </div>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -332,7 +403,7 @@ export function LandscapeDesignerComponent() {
           className="border-gray-300"
         />
         <div className="mt-8">
-          <h3 className="text-2xl font-semibold mb-4 text-gray-900">预览</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-gray-900">生成结果</h3>
           {isGenerating || isEditing ? (
             <div className="w-full h-64 bg-gray-200 rounded-lg flex flex-col items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />

@@ -35,5 +35,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generations
+# generation output
 /public/output/*
+
+# reference images local backup
+/public/input/*
