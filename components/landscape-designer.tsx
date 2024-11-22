@@ -13,57 +13,51 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Upload, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 
-export function LandscapeDesignerComponent() {
-  const [apiKey, setApiKey] = useState('')
-  const [promptText, setPromptText] = useState('')
-  const [promptImage, setPromptImage] = useState(null)
-  const [promptImageStrength, setPromptImageStrength] = useState(50)
-  const [generatedImage, setGeneratedImage] = useState('')
-  const [editImage, setEditImage] = useState(null)
-  const [history, setHistory] = useState([])
-  const [materialKeyword, setMaterialKeyword] = useState('')
-  const [materialImage, setMaterialImage] = useState(null)
-  const [inspirationKeyword, setInspirationKeyword] = useState('')
-  const [inspirationImage, setInspirationImage] = useState(null)
-  const [isGenerateOpen, setIsGenerateOpen] = useState(true)
-  const [isEditOpen, setIsEditOpen] = useState(true)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
+interface ImageUploaderProps {
+  image: string | null;
+  setImage: (value: string | null) => void;
+  label: string;
+  size?: "small" | "large";
+}
 
-  const handleImageUpload = (event, setter) => {
+const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploaderProps) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setter: (value: string | null) => void) => {
+    if (!event.target.files) return
     const file = event.target.files[0]
     if (file) {
-      // Check file type
       const validTypes = ['image/png', 'image/webp', 'image/jpeg']
       if (!validTypes.includes(file.type)) {
         alert('请上传PNG、WebP或JPG格式的图片')
         return
       }
       
-      // Check file size (3MB = 3 * 1024 * 1024 bytes)
       if (file.size > 3 * 1024 * 1024) {
         alert('图片大小不能超过3MB')
         return
       }
 
       const reader = new FileReader()
-      reader.onload = (e) => setter(e.target.result)
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          setter(e.target.result)
+        }
+      }
       reader.readAsDataURL(file)
     }
   }
 
-  const ImageUploader = ({ image, setImage, label, size = "small" }) => (
+  return (
     <div className="mt-2">
       <Label className="text-sm mb-2">{label}</Label>
       <div 
         className={`${size === "small" ? "w-32 h-32" : "w-full h-64"} border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative group`}
-        onClick={() => !image && document.getElementById(`${label}Upload`).click()}
+        onClick={() => !image && document.getElementById(`${label}Upload`)?.click()}
       >
         {image ? (
           <>
             <img src={image} alt={`${label} reference`} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button variant="ghost" size="sm" className="text-white mr-2" onClick={() => document.getElementById(`${label}Upload`).click()}>
+              <Button variant="ghost" size="sm" className="text-white mr-2" onClick={() => document.getElementById(`${label}Upload`)?.click()}>
                 更换
               </Button>
               <Button variant="ghost" size="sm" className="text-white" onClick={() => setImage(null)}>
@@ -84,22 +78,51 @@ export function LandscapeDesignerComponent() {
       <p className="text-xs text-gray-500 mt-1">请上传PNG、WebP或JPG格式的图片，大小不超过3MB</p>
     </div>
   )
+}
+
+export function LandscapeDesignerComponent() {
+  const [apiKey, setApiKey] = useState('')
+  const [promptText, setPromptText] = useState('')
+  const [promptImage, setPromptImage] = useState<string | null>(null)
+  const [promptImageStrength, setPromptImageStrength] = useState(50)
+  const [generatedImage, setGeneratedImage] = useState('')
+  const [editImage, setEditImage] = useState<string | null>(null)
+  const [history, setHistory] = useState<string[]>([])
+  const [materialKeyword, setMaterialKeyword] = useState('')
+  const [materialImage, setMaterialImage] = useState<string | null>(null)
+  const [inspirationKeyword, setInspirationKeyword] = useState('')
+  const [inspirationImage, setInspirationImage] = useState<string | null>(null)
+  const [isGenerateOpen, setIsGenerateOpen] = useState(true)
+  const [isEditOpen, setIsEditOpen] = useState(true)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   const handleGenerate = async () => {
     if (!promptText.trim()) return
     setIsGenerating(true)
     try {
-      // TODO: Implement ComfyUI API call here
-      console.log("Generating image with prompt:", promptText)
-      await new Promise(resolve => setTimeout(resolve, 3000)) // Simulating API call
-      const newImage = '/placeholder.png'
-      setGeneratedImage(newImage)
-      setHistory(prev => [newImage, ...prev])
+      const response = await fetch('/api/comfyui', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          promptText: promptText,
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setGeneratedImage(data.imagePath);
+        setHistory(prev => [data.imagePath, ...prev]);
+      } else {
+        throw new Error(data.error);
+      }
     } catch (error) {
-      console.error('Generation failed:', error)
-      // TODO: Implement error handling
+      console.error('Generation failed:', error);
+      // TODO: 实现错误处理
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
   }
 
@@ -121,7 +144,7 @@ export function LandscapeDesignerComponent() {
     }
   }
 
-  const openImageInNewWindow = (imageSrc) => {
+  const openImageInNewWindow = (imageSrc: string) => {
     if (imageSrc) {
       window.open(imageSrc, '_blank', 'width=800,height=600')
     }
@@ -133,7 +156,7 @@ export function LandscapeDesignerComponent() {
       <div className="w-1/2 p-8 overflow-y-auto">
         <h1 className="text-4xl font-bold mb-8 text-gray-900">AI景观设计师</h1>
         
-        {/* 效果图生成部分 */}
+        {/* 效果生成部分 */}
         <Collapsible open={isGenerateOpen} onOpenChange={setIsGenerateOpen} className="mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
