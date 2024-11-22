@@ -92,7 +92,7 @@ export function LandscapeDesignerComponent() {
       // TODO: Implement ComfyUI API call here
       console.log("Generating image with prompt:", promptText)
       await new Promise(resolve => setTimeout(resolve, 3000)) // Simulating API call
-      const newImage = '/placeholder.svg?height=300&width=400'
+      const newImage = '/placeholder.png'
       setGeneratedImage(newImage)
       setHistory(prev => [newImage, ...prev])
     } catch (error) {
@@ -110,7 +110,7 @@ export function LandscapeDesignerComponent() {
       // TODO: Implement ComfyUI API call for image editing here
       console.log("Editing image with parameters:", { materialKeyword, inspirationKeyword })
       await new Promise(resolve => setTimeout(resolve, 3000)) // Simulating API call
-      const editedImage = '/placeholder.svg?height=300&width=400'
+      const editedImage = '/placeholder.png'
       setGeneratedImage(editedImage)
       setHistory(prev => [editedImage, ...prev])
     } catch (error) {
@@ -320,7 +320,7 @@ export function LandscapeDesignerComponent() {
           ) : (
             <div 
               className="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
-              onClick={() => openImageInNewWindow('/placeholder.svg?height=300&width=400')}
+              onClick={() => openImageInNewWindow('/placeholder.png')}
             >
               <p className="text-gray-500">生成的图像将显示在这里</p>
             </div>
@@ -333,7 +333,7 @@ export function LandscapeDesignerComponent() {
               <div 
                 key={index} 
                 className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
-                onClick={() => openImageInNewWindow(history[index] || '/placeholder.svg?height=300&width=400')}
+                onClick={() => openImageInNewWindow(history[index] || '/placeholder.png')}
               >
                 {history[index] ? (
                   <img src={history[index]} alt={`History ${index}`} className="w-full h-full object-cover rounded-lg" />
