@@ -8,36 +8,46 @@ const SERVER_ADDRESS = "127.0.0.1:8188";
 export async function POST(req: Request) {
     try {
         const { 
-            promptText, 
+            promptText,
+            mode,
+            sketchImage,
+            sketchStrength,
             shapeReference, 
             materialReference, 
             shapeStrength, 
             materialStrength 
         } = await req.json();
 
-        // 根据参考图情况选择工作流文件
         let workflowPath;
-        if (shapeReference && materialReference) {
-            // 情况b：同时使用两张参考图
+        
+        if (mode === 'sketch2img') {
+            // 手绘灵感发散模式
             workflowPath = path.join(
                 process.cwd(),
                 'comfyui-workflow',
-                'image-reference-both-api-1123.json'
-            );
-        } else if (shapeReference || materialReference) {
-            // 情况a：使用单张参考图
-            workflowPath = path.join(
-                process.cwd(),
-                'comfyui-workflow',
-                'image-reference-api-1123.json'
+                'sketch-to-plan-api-1123.json'
             );
         } else {
-            // 情况c：基础文生图
-            workflowPath = path.join(
-                process.cwd(),
-                'comfyui-workflow',
-                'basic-t2i-api-1123.json'
-            );
+            // 原有的文字生成图像模式
+            if (shapeReference && materialReference) {
+                workflowPath = path.join(
+                    process.cwd(),
+                    'comfyui-workflow',
+                    'image-reference-both-api-1123.json'
+                );
+            } else if (shapeReference || materialReference) {
+                workflowPath = path.join(
+                    process.cwd(),
+                    'comfyui-workflow',
+                    'image-reference-api-1123.json'
+                );
+            } else {
+                workflowPath = path.join(
+                    process.cwd(),
+                    'comfyui-workflow',
+                    'basic-t2i-api-1123.json'
+                );
+            }
         }
 
         const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
@@ -45,19 +55,23 @@ export async function POST(req: Request) {
         // 更新提示词
         workflow["6"]["inputs"]["text"] = promptText;
 
-        // 处理参考图相关设置
-        if (shapeReference && materialReference) {
-            // 情况b：设置两张参考图
-            workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', shapeReference);
-            workflow["19"]["inputs"]["image"] = path.join(process.cwd(), 'public', materialReference);
-            workflow["18"]["inputs"]["weight_style"] = materialStrength || 0.5;
-            workflow["18"]["inputs"]["weight_composition"] = shapeStrength || 0.5;
-        } else if (shapeReference || materialReference) {
-            // 情况a：设置单张参考图
-            const reference = shapeReference || materialReference;
-            workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', reference);
-            workflow["22"]["inputs"]["weight"] = shapeReference ? shapeStrength : materialStrength || 0.5;
-            workflow["22"]["inputs"]["weight_type"] = shapeReference ? "composition" : "style transfer";
+        if (mode === 'sketch2img') {
+            // 更新手绘图路径和强度
+            workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', sketchImage);
+            workflow["18"]["inputs"]["strength"] = sketchStrength || 0.5;
+        } else {
+            // 原有的参考图处理逻辑
+            if (shapeReference && materialReference) {
+                workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', shapeReference);
+                workflow["19"]["inputs"]["image"] = path.join(process.cwd(), 'public', materialReference);
+                workflow["18"]["inputs"]["weight_style"] = materialStrength || 0.5;
+                workflow["18"]["inputs"]["weight_composition"] = shapeStrength || 0.5;
+            } else if (shapeReference || materialReference) {
+                const reference = shapeReference || materialReference;
+                workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', reference);
+                workflow["22"]["inputs"]["weight"] = shapeReference ? shapeStrength : materialStrength || 0.5;
+                workflow["22"]["inputs"]["weight_type"] = shapeReference ? "composition" : "style transfer";
+            }
         }
 
         // 生成随机种子
