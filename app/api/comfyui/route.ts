@@ -7,59 +7,68 @@ const SERVER_ADDRESS = "127.0.0.1:8188";
 
 export async function POST(req: Request) {
     try {
-        const { promptText, hasReferenceImage, promptImageStrength, referenceMode } = await req.json();
+        const { 
+            promptText, 
+            shapeReference, 
+            materialReference, 
+            shapeStrength, 
+            materialStrength 
+        } = await req.json();
 
-        // 根据是否有参考图选择工作流文件
-        const workflowPath = path.join(
-            process.cwd(),
-            'comfyui-workflow',
-            hasReferenceImage ? 'image-reference-api.json' : 'basic-t2i-api.json'
-        );
+        // 根据参考图情况选择工作流文件
+        let workflowPath;
+        if (shapeReference && materialReference) {
+            // 情况b：同时使用两张参考图
+            workflowPath = path.join(
+                process.cwd(),
+                'comfyui-workflow',
+                'image-reference-both-api-1123.json'
+            );
+        } else if (shapeReference || materialReference) {
+            // 情况a：使用单张参考图
+            workflowPath = path.join(
+                process.cwd(),
+                'comfyui-workflow',
+                'image-reference-api-1123.json'
+            );
+        } else {
+            // 情况c：基础文生图
+            workflowPath = path.join(
+                process.cwd(),
+                'comfyui-workflow',
+                'basic-t2i-api-1123.json'
+            );
+        }
 
         const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
 
-        // 修改workflow中的提示词
+        // 更新提示词
         workflow["6"]["inputs"]["text"] = promptText;
 
-        // 如果有参考图，更新参考图路径和参考强度
-        if (hasReferenceImage) {
-            // 获取最新的参考图文件
-            const inputDir = path.join(process.cwd(), 'public', 'input');
-            const files = fs.readdirSync(inputDir);
-            const latestFile = files
-                .filter(file => file.startsWith('reference_'))
-                .sort()
-                .reverse()[0];
-
-            if (latestFile) {
-                // 记录完整的本地备份路径
-                const fullBackupPath = path.join(inputDir, latestFile);
-                console.log('本地备份图片路径:', fullBackupPath);
-
-                // 更新工作流中的图片路径
-                // TODO: 如果这里是远程服务器，还需要添加保存到云端，记录云端路径
-                workflow["13"]["inputs"]["image"] = fullBackupPath;
-
-                // 记录发送给ComfyUI的文件名
-                console.log('发送给ComfyUI的文件名:', fullBackupPath);
-
-                // 更新工作流中的参考强度和类型
-                workflow["12"]["inputs"]["weight"] = promptImageStrength || 1;
-                workflow["12"]["inputs"]["weight_type"] = referenceMode || "ease in-out";
-            }
+        // 处理参考图相关设置
+        if (shapeReference && materialReference) {
+            // 情况b：设置两张参考图
+            workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', shapeReference);
+            workflow["19"]["inputs"]["image"] = path.join(process.cwd(), 'public', materialReference);
+            workflow["18"]["inputs"]["weight_style"] = materialStrength || 0.5;
+            workflow["18"]["inputs"]["weight_composition"] = shapeStrength || 0.5;
+        } else if (shapeReference || materialReference) {
+            // 情况a：设置单张参考图
+            const reference = shapeReference || materialReference;
+            workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', reference);
+            workflow["22"]["inputs"]["weight"] = shapeReference ? shapeStrength : materialStrength || 0.5;
+            workflow["22"]["inputs"]["weight_type"] = shapeReference ? "composition" : "style transfer";
         }
 
         // 生成随机种子
         workflow["3"]["inputs"]["seed"] = Math.floor(Math.random() * 1000000);
 
-        // 添加日志输出最终的 workflow
+        // 添加日志输出
         console.log('发送给ComfyUI的完整workflow:', JSON.stringify(workflow, null, 2));
 
-        // 创建WebSocket连接
+        // WebSocket 连接和处理部分保持不变
         const clientId = crypto.randomUUID();
         const ws = new WebSocket(`ws://${SERVER_ADDRESS}/ws?clientId=${clientId}`);
-
-
 
         const result = await new Promise((resolve, reject) => {
             ws.on('open', async () => {
@@ -111,7 +120,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ 
             success: true, 
             imagePath: result,
-            workflow: workflow  // 添加 workflow 到返回数据中
+            workflow: workflow
         });
 
     } catch (error) {

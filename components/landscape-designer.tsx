@@ -1,17 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Upload, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+
+// todo
+/* 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+ */
 
 interface ImageUploaderProps {
   image: string | null;
@@ -30,7 +34,7 @@ const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploader
         alert('请上传PNG、WebP或JPG格式的图片')
         return
       }
-      
+
       if (file.size > 3 * 1024 * 1024) {
         alert('图片大小不能超过3MB')
         return
@@ -47,16 +51,10 @@ const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploader
           body: formData,
         })
         const data = await response.json()
-        
+
         if (data.success) {
-          // 读取文件用于预览
-          const reader = new FileReader()
-          reader.onload = (e) => {
-            if (typeof e.target?.result === 'string') {
-              setter(e.target.result)
-            }
-          }
-          reader.readAsDataURL(file)
+          // 使用服务器返回的文件路径
+          setter(data.path)
         } else {
           throw new Error(data.error)
         }
@@ -70,7 +68,7 @@ const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploader
   return (
     <div className="mt-2">
       <Label className="text-sm mb-2">{label}</Label>
-      <div 
+      <div
         className={`${size === "small" ? "w-32 h-32" : "w-full h-64"} border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative group`}
         onClick={() => !image && document.getElementById(`${label}Upload`)?.click()}
       >
@@ -101,80 +99,139 @@ const ImageUploader = ({ image, setImage, label, size = "small" }: ImageUploader
   )
 }
 
-// 添加参考模式类型定义
+// todo 
+/* 
+// add reference mode (for ipadapter)
 type ReferenceMode = 'ease in-out' | 'composition' | 'style transfer';
+ */
 
 export function LandscapeDesignerComponent() {
   const [apiKey, setApiKey] = useState('')
-  const [promptText, setPromptText] = useState('')
-  const [promptImage, setPromptImage] = useState<string | null>(null)
-  const [promptImageStrength, setPromptImageStrength] = useState(1)
   const [generatedImage, setGeneratedImage] = useState('')
-  const [editImage, setEditImage] = useState<string | null>(null)
   const [history, setHistory] = useState<string[]>([])
+  const [isGenerateOpen, setIsGenerateOpen] = useState(true)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [shapePrompt, setShapePrompt] = useState('')
+  const [shapeReference, setShapeReference] = useState<string | null>(null)
+  const [shapeStrength, setShapeStrength] = useState(0.5)
+  const [materialPrompt, setMaterialPrompt] = useState('')
+  const [materialReference, setMaterialReference] = useState<string | null>(null)
+  const [materialStrength, setMaterialStrength] = useState(0.5)
+  const [environmentType, setEnvironmentType] = useState<'large' | 'small' | 'custom'>('custom')
+  const [customEnvironment, setCustomEnvironment] = useState('')
+  const [finalPrompt, setFinalPrompt] = useState('')
+  const [viewType, setViewType] = useState<'custom' | 'aerial'>('custom')
+  const [customView, setCustomView] = useState('')
+
+  // todo
+  /* 
   const [materialKeyword, setMaterialKeyword] = useState('')
   const [materialImage, setMaterialImage] = useState<string | null>(null)
   const [inspirationKeyword, setInspirationKeyword] = useState('')
   const [inspirationImage, setInspirationImage] = useState<string | null>(null)
-  const [isGenerateOpen, setIsGenerateOpen] = useState(true)
   const [isEditOpen, setIsEditOpen] = useState(true)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
   const [referenceMode, setReferenceMode] = useState<ReferenceMode>('ease in-out')
+  const [editImage, setEditImage] = useState<string | null>(null)
+  const [promptText, setPromptText] = useState('')
+  const [promptImage, setPromptImage] = useState<string | null>(null)
+  const [promptImageStrength, setPromptImageStrength] = useState(1) 
+  */
 
-  const handleGenerate = async () => {
-    if (!promptText.trim()) return
-    setIsGenerating(true)
-    try {
-      console.log('发送参数:', {
-        promptText,
-        hasReferenceImage: !!promptImage,
-        promptImageStrength,
-        referenceMode,
-      });
-
-      const response = await fetch('/api/comfyui', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          promptText,
-          hasReferenceImage: !!promptImage,
-          promptImageStrength,
-          referenceMode,
-        }),
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        // 添加 workflow 日志输出
-        if (data.workflow) {
-          console.log('完整 Workflow 配置:', JSON.stringify(data.workflow, null, 2));
-        }
-        
-        console.log('生成成功:', {
-          imagePath: data.imagePath,
-        });
-        
-        setGeneratedImage(data.imagePath);
-        setHistory(prev => {
-          const newHistory = [data.imagePath, ...prev];
-          return newHistory.slice(0, 48);
-        });
-      } else {
-        console.error('生成失败:', data.error);
-        throw new Error(data.error);
-      }
-    } catch (error) {
-      console.error('生成过程出错:', error);
-      alert('生成失败，请重试');
-    } finally {
-      setIsGenerating(false);
+  const getEnvironmentPrompt = () => {
+    switch (environmentType) {
+      case 'large':
+        return 'outdoor, national geopark, architecture planning, structure design, surreal art style'
+      case 'small':
+        return 'studio photography, simple background, surreal art style'
+      case 'custom':
+        return customEnvironment
+      default:
+        return ''
     }
   }
 
-  const handleEdit = async () => {
+  const getViewPrompt = () => {
+    switch (viewType) {
+      case 'aerial':
+        return 'aerial view'
+      case 'custom':
+        return customView
+      default:
+        return ''
+    }
+  }
+
+  const getCombinedPrompt = () => {
+    const parts = [
+      shapePrompt.trim() ? `${shapePrompt.trim()},` : '',
+      materialPrompt.trim() ? `${materialPrompt.trim()},` : '',
+      getEnvironmentPrompt().trim() ? `${getEnvironmentPrompt().trim()},` : '',
+      getViewPrompt().trim() ? `${getViewPrompt().trim()},` : ''
+    ].filter(Boolean);
+
+    return parts.join(' ');
+  }
+
+  useEffect(() => {
+    setFinalPrompt(getCombinedPrompt());
+  }, [shapePrompt, materialPrompt, environmentType, customEnvironment, viewType, customView]);
+
+  const handleGenerate = async () => {
+    if (!shapePrompt.trim()) return
+    setIsGenerating(true)
+    try {
+        console.log('发送参数:', {
+            promptText: finalPrompt,
+            shapeReference: shapeReference ? '/input/' + shapeReference.split('/').pop() : null,
+            materialReference: materialReference ? '/input/' + materialReference.split('/').pop() : null,
+            shapeStrength,
+            materialStrength,
+        });
+
+        const response = await fetch('/api/comfyui', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                promptText: finalPrompt,
+                shapeReference: shapeReference ? '/input/' + shapeReference.split('/').pop() : null,
+                materialReference: materialReference ? '/input/' + materialReference.split('/').pop() : null,
+                shapeStrength,
+                materialStrength,
+            }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            if (data.workflow) {
+                console.log('完整 Workflow 配置:', JSON.stringify(data.workflow, null, 2));
+            }
+
+            console.log('生成成功:', {
+                imagePath: data.imagePath,
+            });
+
+            setGeneratedImage(data.imagePath);
+            setHistory(prev => {
+                const newHistory = [data.imagePath, ...prev];
+                return newHistory.slice(0, 48);
+            });
+        } else {
+            console.error('生成失败:', data.error);
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        console.error('生成过程出错:', error);
+        alert('生成失败，请重试');
+    } finally {
+        setIsGenerating(false);
+    }
+  }
+
+  // todo
+  /* const handleEdit = async () => {
     if (!editImage) return
     setIsEditing(true)
     try {
@@ -194,6 +251,7 @@ export function LandscapeDesignerComponent() {
       setIsEditing(false)
     }
   }
+ */
 
   const openImageInNewWindow = (imageSrc: string) => {
     if (imageSrc) {
@@ -206,71 +264,205 @@ export function LandscapeDesignerComponent() {
       {/* 左侧：效果图生成和效果图编辑 */}
       <div className="w-1/2 p-8 overflow-y-auto">
         <h1 className="text-4xl font-bold mb-8 text-gray-900">AI景观设计师</h1>
-        
+
         {/* 效果生成部分 */}
         <Collapsible open={isGenerateOpen} onOpenChange={setIsGenerateOpen} className="mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl">效果生成</CardTitle>
+              <CardTitle className="text-2xl">灵感生成</CardTitle>
               <CollapsibleTrigger>
                 {isGenerateOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </CollapsibleTrigger>
             </CardHeader>
             <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-lg mb-2">提示词</Label>
-                  <Textarea 
-                    placeholder="输入完整的提示词..."
-                    value={promptText}
-                    onChange={(e) => setPromptText(e.target.value)}
-                    className="min-h-[150px]"
-                  />
-                </div>
-                <ImageUploader image={promptImage} setImage={setPromptImage} label="提示词参考图" />
-                <div>
-                  <Label className="text-sm mb-2">参考强度</Label>
-                  <span className="text-sm font-medium">{promptImageStrength.toFixed(1)}</span>
-                  <Slider 
-                    value={[promptImageStrength]} 
-                    onValueChange={([value]) => setPromptImageStrength(value)} 
-                    max={2} 
-                    min={0}
-                    step={0.1} 
-                    className="mb-2"
-                  />
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大</p>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">
+                    主体造型
+                    <span className="text-red-500 ml-2">*必填</span>
+                  </Label>
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="输入主体造型的提示词，例如：现代简约、自然有机、几何图形、古典优雅"
+                      value={shapePrompt}
+                      onChange={(e) => setShapePrompt(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <ImageUploader image={shapeReference} setImage={setShapeReference} label="主体参考图" />
+                    {shapeReference && (
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <Label className="text-sm">主体参考强度</Label>
+                          <span className="text-sm font-medium">{shapeStrength.toFixed(1)}</span>
+                        </div>
+                        <Slider
+                          value={[shapeStrength]}
+                          onValueChange={([value]) => setShapeStrength(value)}
+                          max={1}
+                          min={0}
+                          step={0.1}
+                          className="mb-2"
+                        />
+                        <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大</p>
+                      </div>
+                    )}
                   </div>
-                  
-                  {/* 添加参考模式选择 */}
-                  <div className="mt-4">
-                    <Label className="text-sm mb-2">参考模式</Label>
-                    <Select value={referenceMode} onValueChange={(value: ReferenceMode) => setReferenceMode(value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择参考模式" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ease in-out">默认</SelectItem>
-                        <SelectItem value="composition">参考主体</SelectItem>
-                        <SelectItem value="style transfer">参考风格</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {referenceMode === 'ease in-out' && '默认模式：平衡参考图的整体影响'}
-                      {referenceMode === 'composition' && '参考主体：更强调参考图的主体的造型'}
-                      {referenceMode === 'style transfer' && '参考风格：更强调参考图的风格'}
-                    </p>
+                </div>
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">材质</Label>
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="输入材质关键词，例如：木材、石材、金属、玻璃、混凝土"
+                      value={materialPrompt}
+                      onChange={(e) => setMaterialPrompt(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <ImageUploader image={materialReference} setImage={setMaterialReference} label="材质参考图" />
+                    {materialReference && (
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <Label className="text-sm">材质参考强度</Label>
+                          <span className="text-sm font-medium">{materialStrength.toFixed(1)}</span>
+                        </div>
+                        <Slider
+                          value={[materialStrength]}
+                          onValueChange={([value]) => setMaterialStrength(value)}
+                          max={1}
+                          min={0}
+                          step={0.1}
+                          className="mb-2"
+                        />
+                        <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">环境设置（可选）</Label>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'custom'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      onClick={() => setEnvironmentType('custom')}
+                    >
+                      <div className="font-medium">自定义</div>
+                      <div className="text-sm text-gray-500">自定义环境相关的提示词</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'large'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      onClick={() => setEnvironmentType('large')}
+                    >
+                      <div className="font-medium">大型结构</div>
+                      <div className="text-sm text-gray-500">适用于大型景观构筑物、地标性建筑等</div>
+                      <div className="text-xs text-gray-400 mt-1">添加提示词：outdoor, national geopark, architecture planning, structure design, surreal art style</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'small'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      onClick={() => setEnvironmentType('small')}
+                    >
+                      <div className="font-medium">小型结构</div>
+                      <div className="text-sm text-gray-500">适用于小品、街道家具等小型构筑物</div>
+                      <div className="text-xs text-gray-400 mt-1">添加提示词：studio photography, simple background, surreal art style</div>
+                    </button>
+                  </div>
+
+                  {/* 自定义输入框始终显示，因为默认就是自定义模式 */}
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="输入自定义的环境提示词..."
+                      value={customEnvironment}
+                      onChange={(e) => setCustomEnvironment(e.target.value)}
+                      className="min-h-[100px]"
+                      disabled={environmentType !== 'custom'} // 只在自定义模式下可编辑
+                    />
+                    <p className="text-xs text-gray-500">描述作品的环境氛围、光照条件等</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">视角设置（可选）</Label>
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'custom'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      onClick={() => setViewType('custom')}
+                    >
+                      <div className="font-medium">自定义</div>
+                      <div className="text-sm text-gray-500">自定义视角相关的提示词</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'aerial'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      onClick={() => setViewType('aerial')}
+                    >
+                      <div className="font-medium">航拍视角</div>
+                      <div className="text-sm text-gray-500">从高处俯视的视角</div>
+                      <div className="text-xs text-gray-400 mt-1">添加提示词：aerial view</div>
+                    </button>
+                  </div>
+
+                  {/* 自定义输入框始终显示，因为默认就是自定义模式 */}
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="输入自定义的视角提示词..."
+                      value={customView}
+                      onChange={(e) => setCustomView(e.target.value)}
+                      className="min-h-[100px]"
+                      disabled={viewType !== 'custom'} // 只在自定义模式下可编辑
+                    />
+                    <p className="text-xs text-gray-500">描述观察视角，如：正视图、俯视图、仰视图等</p>
+                  </div>
+                </div>
+                <div className="space-y-2 border rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-medium">总提示词预览</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(finalPrompt);
+                      }}
+                    >
+                      复制
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <Textarea
+                      value={finalPrompt}
+                      onChange={(e) => setFinalPrompt(e.target.value)}
+                      className="min-h-[100px] font-mono"
+                      placeholder="请至少输入主体造型提示词"
+                    />
+                    <p className="text-xs text-gray-500">这是所有设置组合后的完整提示词，您可以直接编辑</p>
                   </div>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div>
-                        <Button 
-                          onClick={handleGenerate} 
+                        <Button
+                          onClick={handleGenerate}
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                          disabled={!promptText.trim() || isGenerating}
+                          disabled={!shapePrompt.trim() || isGenerating}
                         >
                           {isGenerating ? (
                             <>
@@ -284,7 +476,7 @@ export function LandscapeDesignerComponent() {
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{!promptText.trim() ? "提示词不能为空" : "点击生成效果图"}</p>
+                      <p>{!shapePrompt.trim() ? "主体造型提示词不能为空" : "点击生成效果图"}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -293,8 +485,10 @@ export function LandscapeDesignerComponent() {
           </Card>
         </Collapsible>
 
-        {/* 效果图编辑部分 */}
-        <Collapsible open={isEditOpen} onOpenChange={setIsEditOpen}>
+        {/* todo */}
+        {/* Image editing function */}
+
+        {/* <Collapsible open={isEditOpen} onOpenChange={setIsEditOpen}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-2xl">效果图编辑</CardTitle>
@@ -361,7 +555,7 @@ export function LandscapeDesignerComponent() {
                       </div>
                     </div>
                   </TabsContent>
-                  {/* 其他标签页的内容类似，这里省略 */}
+
                 </Tabs>
                 <TooltipProvider>
                   <Tooltip>
@@ -391,7 +585,7 @@ export function LandscapeDesignerComponent() {
               </CardContent>
             </CollapsibleContent>
           </Card>
-        </Collapsible>
+        </Collapsible> */}
       </div>
 
       {/* 右侧：控制面板 */}
@@ -408,21 +602,21 @@ export function LandscapeDesignerComponent() {
             <div className="w-full h-64 bg-gray-200 rounded-lg flex flex-col items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
               <p className="text-gray-500 mt-4">生成中...</p>
-              <p className="text-gray-400 text-sm mt-2">如果等待时间过长，请重试</p>
+              <p className="text-gray-400 text-sm mt-2">如果等时间过长，请重试</p>
             </div>
           ) : generatedImage ? (
-            <img 
-              src={generatedImage} 
-              alt="Generated landscape" 
-              className="w-full h-auto rounded-lg shadow-lg cursor-pointer" 
+            <img
+              src={generatedImage}
+              alt="Generated landscape"
+              className="w-full h-auto rounded-lg shadow-lg cursor-pointer"
               onClick={() => openImageInNewWindow(generatedImage)}
             />
           ) : (
-            <div 
+            <div
               className="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
               onClick={() => openImageInNewWindow('/placeholder.png')}
             >
-              <p className="text-gray-500">生成的图像将显示在这里</p>
+              <p className="text-gray-500">生成的图像将显示在里</p>
             </div>
           )}
         </div>
@@ -431,8 +625,8 @@ export function LandscapeDesignerComponent() {
           {history.length > 0 ? (
             <div className="grid grid-cols-4 gap-4">
               {history.slice(0, 48).map((imagePath, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
                   onClick={() => openImageInNewWindow(imagePath)}
                 >
