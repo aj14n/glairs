@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Upload, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ImageUploaderProps {
@@ -331,16 +330,44 @@ export function LandscapeDesignerComponent() {
   }
 
   const parseSSHCommand = (command: string) => {
-    const match = command.match(/ssh -p (\d+) (.+?)@(.+)/)
-    if (match) {
-      const config = {
-        port: match[1],
-        user: match[2],
-        host: match[3]
+    // 移除多余的空格并分割命令
+    const parts = command.trim().split(/\s+/)
+    
+    let host = '', port = '', user = ''
+    
+    // 遍历所有部分来查找相关信息
+    for (let i = 0; i < parts.length; i++) {
+      const current = parts[i]
+      
+      // 检查用户@主机格式
+      if (current.includes('@')) {
+        const [username, hostname] = current.split('@')
+        user = username
+        host = hostname
+        continue
       }
+      
+      // 检查端口参数
+      if (current === '-p' && i + 1 < parts.length) {
+        port = parts[i + 1]
+        i++ // 跳过下一个参数
+        continue
+      }
+    }
+    
+    // 验证是否获取到所有必要信息
+    if (host && port && user) {
+      const config = {
+        port,
+        user,
+        host
+      }
+      console.log('解析SSH配置:', config)
       setSshConfig(config)
       return true
     }
+    
+    console.log('SSH命令解析失败')
     setSshConfig(null)
     return false
   }
