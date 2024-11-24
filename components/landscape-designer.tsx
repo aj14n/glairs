@@ -710,7 +710,7 @@ export function LandscapeDesignerComponent() {
       < div className="w-1/2 p-8 space-y-8 bg-white overflow-y-auto" >
         <div className="space-y-4">
           <Input
-            placeholder="输入SSH命令 (格式: ssh -p <端口> <用户>@<主机>)"
+            placeholder="输入SSH命令 INPUT SSH COMMAND"
             value={sshCommand}
             onChange={(e) => {
               setSshCommand(e.target.value)
@@ -720,19 +720,19 @@ export function LandscapeDesignerComponent() {
           />
           <Input
             type="password"
-            placeholder="输入SSH密码"
+            placeholder="输入SSH密码 INPUT SSH PASSWORD"
             value={sshPassword}
             onChange={(e) => setSshPassword(e.target.value)}
             className="border-gray-300"
           />
         </div>
         <div className="mt-8">
-          <h3 className="text-2xl font-semibold mb-4 text-gray-900">生成结果</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-gray-900">生成结果 Generated Image</h3>
           {isGenerating || isEditing ? (
             <div className="w-full h-64 bg-gray-200 rounded-lg flex flex-col items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <p className="text-gray-500 mt-4">生成中...</p>
-              <p className="text-gray-400 text-sm mt-2">如果等时间过长，请重试</p>
+              <p className="text-gray-500 mt-4">生成中... GENERATING...</p>
+              <p className="text-gray-400 text-sm mt-2">如果等时间过长，请刷新 Refresh if waiting too long</p>
             </div>
           ) : generatedImage ? (
             <img
@@ -746,12 +746,12 @@ export function LandscapeDesignerComponent() {
               className="w-full h-64 bg-gray-200 rounded-lg flex items-center justify-center cursor-pointer"
               onClick={() => openImageInNewWindow('/placeholder.png')}
             >
-              <p className="text-gray-500">生成的图像将显示在里</p>
+              <p className="text-gray-500">生成的图像将显示在里 Generated image will be displayed here</p>
             </div>
           )}
         </div>
         <div className="mt-8">
-          <h3 className="text-2xl font-semibold mb-4 text-gray-900">历史生成</h3>
+          <h3 className="text-2xl font-semibold mb-4 text-gray-900">历史生成 History</h3>
           {history.length > 0 ? (
             <div className="grid grid-cols-4 gap-4">
               {history.slice(0, 48).map((imagePath, index) => (
@@ -766,7 +766,7 @@ export function LandscapeDesignerComponent() {
             </div>
           ) : (
             <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">还没有进行过生成</p>
+              <p className="text-gray-500">还没有进行过生成 No generation yet</p>
             </div>
           )}
         </div>
