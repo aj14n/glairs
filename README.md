@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI景观设计师
 
-## Getting Started
+## 快速开始
 
-First, run the development server:
+1. 确保您的电脑已安装 [Node.js](https://nodejs.org/) (版本 16.0 或更高)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. Windows 用户：
+   - 双击运行 `start.bat` 文件
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. macOS/Linux 用户：
+   - 打开终端
+   - 进入项目目录
+   - 运行以下命令赋予启动脚本执行权限：
+     ```bash
+     chmod +x start.sh
+     ```
+   - 运行启动脚本：
+     ```bash
+     ./start.sh
+     ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. 等待依赖安装完成后，浏览器会自动打开应用页面
+   - 如果浏览器没有自动打开，请手动访问 http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 注意事项
 
-## Learn More
+- 首次运行时会自动安装依赖，可能需要几分钟时间
+- 请确保您的电脑连接到互联网
+- 如果遇到问题，请检查：
+  1. Node.js 是否正确安装
+  2. 网络连接是否正常
+  3. 端口 3000 是否被其他应用占用
 
-To learn more about Next.js, take a look at the following resources:
+## 技术支持
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+如有问题，请提交 Issue 或联系技术支持。

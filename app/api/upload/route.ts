@@ -59,7 +59,7 @@ export async function POST(req: Request) {
         host: sshConfig.host,
         port: sshConfig.port,
         username: sshConfig.user,
-        targetPath: `/root/autodl-fs/input/${localFilename}`
+        targetPath: `/root/autodl-tmp/input/${localFilename}`
       })
       
       await new Promise((resolve, reject) => {
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
             }
             console.log('✅ SFTP会话创建成功')
             
-            const remoteFilePath = `/root/autodl-fs/input/${localFilename}`
+            const remoteFilePath = `/root/autodl-tmp/input/${localFilename}`
             console.log('📤 开始上传文件到:', remoteFilePath)
             
             const writeStream = sftp.createWriteStream(remoteFilePath)
