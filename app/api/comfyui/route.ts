@@ -58,18 +58,18 @@ export async function POST(req: Request) {
 
         if (mode === 'sketch2img') {
             // 更新手绘图路径和强度
-            workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', sketchImage);
+            workflow["13"]["inputs"]["image"] = `/root/autodl-fs/input/${sketchImage.split('/').pop()}`;
             workflow["18"]["inputs"]["strength"] = sketchStrength || 0.5;
         } else {
             // 原有的参考图处理逻辑
             if (shapeReference && materialReference) {
-                workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', shapeReference);
-                workflow["19"]["inputs"]["image"] = path.join(process.cwd(), 'public', materialReference);
+                workflow["13"]["inputs"]["image"] = `/root/autodl-fs/input/${shapeReference.split('/').pop()}`;
+                workflow["19"]["inputs"]["image"] = `/root/autodl-fs/input/${materialReference.split('/').pop()}`;
                 workflow["18"]["inputs"]["weight_style"] = materialStrength || 0.5;
                 workflow["18"]["inputs"]["weight_composition"] = shapeStrength || 0.5;
             } else if (shapeReference || materialReference) {
                 const reference = shapeReference || materialReference;
-                workflow["13"]["inputs"]["image"] = path.join(process.cwd(), 'public', reference);
+                workflow["13"]["inputs"]["image"] = `/root/autodl-fs/input/${reference.split('/').pop()}`;
                 workflow["22"]["inputs"]["weight"] = shapeReference ? shapeStrength : materialStrength || 0.5;
                 workflow["22"]["inputs"]["weight_type"] = shapeReference ? "composition" : "style transfer";
             }
