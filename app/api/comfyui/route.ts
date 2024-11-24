@@ -3,7 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import WebSocket from 'ws';
 
-const SERVER_ADDRESS = "127.0.0.1:8188";
+// const SERVER_ADDRESS = "127.0.0.1:8188";
+const SERVER_ADDRESS = "127.0.0.1:6006";
 
 export async function POST(req: Request) {
     try {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
             workflowPath = path.join(
                 process.cwd(),
                 'comfyui-workflow',
-                'sketch-to-plan-api-1123.json'
+                'sketch-to-plan-api-1124.json'
             );
         } else {
             // 原有的文字生成图像模式
@@ -33,19 +34,19 @@ export async function POST(req: Request) {
                 workflowPath = path.join(
                     process.cwd(),
                     'comfyui-workflow',
-                    'image-reference-both-api-1123.json'
+                    'image-reference-both-api-1124.json'
                 );
             } else if (shapeReference || materialReference) {
                 workflowPath = path.join(
                     process.cwd(),
                     'comfyui-workflow',
-                    'image-reference-api-1123.json'
+                    'image-reference-api-1124.json'
                 );
             } else {
                 workflowPath = path.join(
                     process.cwd(),
                     'comfyui-workflow',
-                    'basic-t2i-api-1123.json'
+                    'basic-t2i-api-1124.json'
                 );
             }
         }
