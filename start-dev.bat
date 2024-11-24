@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 
-echo 正在启动AI景观设计师...
+echo 正在启动GLAIRS...
 
 cd /d "%~dp0"
 

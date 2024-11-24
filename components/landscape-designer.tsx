@@ -120,11 +120,11 @@ const ImageUploader =
             <>
               <img src={image} alt={`${label} reference`} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="sm" className="text-white mr-2" onClick={() => document.getElementById(`${label}Upload`)?.click()}>
-                  更换 Replace
+                <Button variant="ghost" size="sm" className="text-white mr-1" onClick={() => document.getElementById(`${label}Upload`)?.click()}>
+                  更换 <br />Replace
                 </Button>
                 <Button variant="ghost" size="sm" className="text-white" onClick={() => setImage(null)}>
-                  删除 Delete
+                  删除 <br />Delete
                 </Button>
               </div>
             </>

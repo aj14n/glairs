@@ -3,7 +3,7 @@
 # 设置终端输出为 UTF-8
 export LANG=en_US.UTF-8
 
-echo "正在启动AI景观设计师..."
+echo "正在启动GLAIRS..."
 
 # 获取脚本所在目录并切换到该目录
 cd "$(dirname "$0")"
