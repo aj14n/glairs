@@ -52,28 +52,25 @@ if not exist "node_modules\" (
 
 :: 检查关键依赖是否已安装
 if not exist "node_modules\next" (
-    echo 错误: next 模块未找到，
-    echo 请检查以下可能的问题：
-    echo 1. 网络连接是否正常
-    echo 2. 是否有足够的磁盘空间
-    echo 3. 是否有写入权限
-    echo 4. package.json 文件是否完整
-    echo.
-    echo 您可以尝试手动运行：
-    echo npm cache clean --force
-    echo npm install
-    pause
-    exit /b 1
+    echo 错误: next 模块未找到，尝试重新安装依赖...
+    call npm install
+    if not exist "node_modules\next" (
+        echo 严重错误: 依赖安装失败
+        pause
+        exit /b 1
+    )
 )
 
 :: 启动应用
 echo 正在启动应用...
 start cmd /k "call npm run dev"
 if %ERRORLEVEL% neq 0 (
-    echo 错误: npm 命令执行失败，错误代码: %ERRORLEVEL%
+    echo 应用启动失败，错误代码: %ERRORLEVEL%
     pause
     exit /b 1
 )
+
+timeout /t 5 >nul
 
 :: 等待服务启动后打开浏览器
 echo 正在打开浏览器...
