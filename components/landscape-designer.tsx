@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,19 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Upload, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 
-// todo
-
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-
-// interface ImageUploaderProps {
-//   image: string | null;
-//   setImage: (value: string | null) => void;
-//   label: string;
-//   size?: "small" | "large";
-// }
 
 interface ImageUploaderProps {
   image: string | null;
@@ -51,7 +39,7 @@ const ImageUploader =
     const [isDragging, setIsDragging] = useState(false)
 
     const handleImageUpload = async (file: File, setter: (value: string | null) => void) => {
-      console.log('开始上传文件:', {
+      console.log('开始上传 Start Upload:', {
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size
@@ -62,7 +50,7 @@ const ImageUploader =
 
       // 添加SSH配置到formData
       if (sshConfig && sshPassword) {
-        console.log('添加SSH配置:', {
+        console.log('添加SSH配置 Add SSH Config:', {
           ...sshConfig,
           password: '***' // 密码脱敏显示
         })
@@ -71,27 +59,27 @@ const ImageUploader =
           password: sshPassword
         }))
       } else {
-        console.log('警告: 未设置SSH配置')
+        console.log('警告: 未设置SSH配置 Warning: No SSH Config Set')
       }
 
       try {
-        console.log('发送上传请求到服务器')
+        console.log('发送上传请求到服务器 Send Upload Request to Server')
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         })
         const data = await response.json()
-        console.log('服务器响应:', data)
+        console.log('服务器响应 Server Response:', data)
 
         if (data.success) {
-          console.log('文件上传成功:', data.path)
+          console.log('文件上传成功 File Upload Success:', data.path)
           setter(data.path)
         } else {
           throw new Error(data.error)
         }
       } catch (error) {
-        console.error('上传失败:', error)
-        alert('图片上传失败，请重试')
+        console.error('上传失败 Upload Failed:', error)
+        alert('图片上传失败，请重试 Upload Failed, Please Try Again')
       }
     }
 
@@ -133,17 +121,17 @@ const ImageUploader =
               <img src={image} alt={`${label} reference`} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" size="sm" className="text-white mr-2" onClick={() => document.getElementById(`${label}Upload`)?.click()}>
-                  更换
+                  更换 Replace
                 </Button>
                 <Button variant="ghost" size="sm" className="text-white" onClick={() => setImage(null)}>
-                  删除
+                  删除 Delete
                 </Button>
               </div>
             </>
           ) : (
             <div className="flex flex-col items-center justify-center">
-              <Upload className="text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500 text-center p-2">点击或拖拽图片到此处</p>
+              <Upload className="text-gray-400 mb-1" />
+              <p className="text-sm text-gray-500 text-center p-1">点击或拖拽上传 <br /> Click or Drag Upload</p>
             </div>
           )}
         </div>
@@ -154,23 +142,70 @@ const ImageUploader =
           onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], setImage)}
           accept=".png,.jpg,.jpeg,.webp"
         />
-        <p className="text-xs text-gray-500 mt-1">请上传PNG、WebP或JPG格式的图片，大小不超过3MB</p>
+        <p className="text-xs text-gray-500 mt-1">PNG、WebP或JPG格式，最大3MB</p>
+        <p className="text-xs text-gray-500 mt-1">PNG, WebP, or JPG Format, Max Size 3MB</p>
       </div>
     )
   }
 
-// todo 
-/* 
-// add reference mode (for ipadapter)
-type ReferenceMode = 'ease in-out' | 'composition' | 'style transfer';
- */
+// 1. 首先，将这些公共组件移到组件外部，并使用 memo 包装
+const CommonInputFields_Shape = memo(({ 
+  shapePrompt, 
+  setShapePrompt 
+}: {
+  shapePrompt: string;
+  setShapePrompt: (value: string) => void;
+}) => (
+  <div className="space-y-4">
+    <Label className="text-lg font-medium">
+      造型 Shape
+      <span className="text-red-500 ml-2">*必填 Mandatory</span>
+    </Label>
+    <div className="space-y-2">
+      <Textarea
+        placeholder="用英文输入主体造型的提示词，例如：mobius ring sculpture, intertwined circles"
+        value={shapePrompt}
+        onChange={(e) => setShapePrompt(e.target.value)}
+        className="min-h-[100px]"
+      />
+      <p className="text-xs text-gray-500">用英文描述主体元素的造型特点、细节、旁属元素等
+        <br />
+        Describe shape characteristics, details, and related elements IN ENGLISH</p>
+    </div>
+  </div>
+));
+
+const CommonInputFields_Material = memo(({ 
+  materialPrompt, 
+  setMaterialPrompt 
+}: {
+  materialPrompt: string;
+  setMaterialPrompt: (value: string) => void;
+}) => (
+  <div className="space-y-4">
+    <Label className="text-lg font-medium">材质 Material</Label>
+    <div className="space-y-2">
+      <Textarea
+        placeholder="用英文输入材质关键词，例如：iron material"
+        value={materialPrompt}
+        onChange={(e) => setMaterialPrompt(e.target.value)}
+        className="min-h-[100px]"
+      />
+      <p className="text-xs text-gray-500">用英文描述主体元素所使用的材料、颜色等
+        <br />
+        Describe materials, colors used in main elements IN ENGLISH
+      </p>
+    </div>
+  </div>
+));
 
 export function LandscapeDesignerComponent() {
-  // 从localStorage初始化SSH配置
-  const [sshCommand, setSshCommand] = useState(() => 
+  // 从localStorage初始化SSH配置 
+  // Initialize SSH Config from LocalStorage
+  const [sshCommand, setSshCommand] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('sshCommand') || '' : ''
   )
-  const [sshPassword, setSshPassword] = useState(() => 
+  const [sshPassword, setSshPassword] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('sshPassword') || '' : ''
   )
   const [sshConfig, setSshConfig] = useState<{
@@ -197,20 +232,6 @@ export function LandscapeDesignerComponent() {
   const [generationMode, setGenerationMode] = useState<'text2img' | 'sketch2img'>('text2img')
   const [sketchImage, setSketchImage] = useState<string | null>(null)
   const [sketchStrength, setSketchStrength] = useState(0.5)
-
-  // todo
-  /* 
-  const [materialKeyword, setMaterialKeyword] = useState('')
-  const [materialImage, setMaterialImage] = useState<string | null>(null)
-  const [inspirationKeyword, setInspirationKeyword] = useState('')
-  const [inspirationImage, setInspirationImage] = useState<string | null>(null)
-  const [isEditOpen, setIsEditOpen] = useState(true)
-  const [referenceMode, setReferenceMode] = useState<ReferenceMode>('ease in-out')
-  const [editImage, setEditImage] = useState<string | null>(null)
-  const [promptText, setPromptText] = useState('')
-  const [promptImage, setPromptImage] = useState<string | null>(null)
-  const [promptImageStrength, setPromptImageStrength] = useState(1) 
-  */
 
   const getEnvironmentPrompt = () => {
     switch (environmentType) {
@@ -266,7 +287,7 @@ export function LandscapeDesignerComponent() {
         materialStrength,
       };
 
-      console.log('发送参数:', params);
+      console.log('发送参数 Send Parameters:', params);
 
       const response = await fetch('/api/comfyui', {
         method: 'POST',
@@ -279,10 +300,10 @@ export function LandscapeDesignerComponent() {
       const data = await response.json();
       if (data.success) {
         if (data.workflow) {
-          console.log('完整 Workflow 配置:', JSON.stringify(data.workflow, null, 2));
+          console.log('Workflow:', JSON.stringify(data.workflow, null, 2));
         }
 
-        console.log('生成成功:', {
+        console.log('生成成功 Generation Success:', {
           imagePath: data.imagePath,
         });
 
@@ -292,39 +313,16 @@ export function LandscapeDesignerComponent() {
           return newHistory.slice(0, 48);
         });
       } else {
-        console.error('生成失败:', data.error);
+        console.error('生成失败 Generation Failed:', data.error);
         throw new Error(data.error);
       }
     } catch (error) {
-      console.error('生成过程出错:', error);
-      alert('生成失败，请重试');
+      console.error('生成过程出错 Generation Error:', error);
+      alert('生成失败，请重试\nGeneration Failed, Please Try Again');
     } finally {
       setIsGenerating(false);
     }
   }
-
-  // todo
-  /* const handleEdit = async () => {
-    if (!editImage) return
-    setIsEditing(true)
-    try {
-      // TODO: Implement ComfyUI API call for image editing here
-      console.log("Editing image with parameters:", { materialKeyword, inspirationKeyword })
-      await new Promise(resolve => setTimeout(resolve, 3000)) // Simulating API call
-      const editedImage = '/placeholder.png'
-      setGeneratedImage(editedImage)
-      setHistory(prev => {
-        const newHistory = [editedImage, ...prev];
-        return newHistory.slice(0, 48);
-      });
-    } catch (error) {
-      console.error('Editing failed:', error)
-      // TODO: Implement error handling
-    } finally {
-      setIsEditing(false)
-    }
-  }
- */
 
   const openImageInNewWindow = (imageSrc: string) => {
     if (imageSrc) {
@@ -348,6 +346,7 @@ export function LandscapeDesignerComponent() {
   }
 
   // 使用useEffect保存到localStorage
+  // Save to LocalStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('sshCommand', sshCommand)
@@ -370,17 +369,162 @@ export function LandscapeDesignerComponent() {
     }
   }, [])
 
+  // 提取共用的环境和视角设置
+  const CommonSettings = () => (
+    <>
+      <div className="space-y-4">
+        <Label className="text-lg font-medium">环境 Environment</Label>
+        <div className="space-y-3">
+          <button
+            type="button"
+            className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'custom'
+              ? 'border-blue-600 bg-blue-50'
+              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            onClick={() => setEnvironmentType('custom')}
+          >
+            <div className="font-medium">自定义 Custom</div>
+            <div className="text-sm text-gray-500">自定义环境相关的提示词</div>
+          </button>
+
+          <button
+            type="button"
+            className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'large'
+              ? 'border-blue-600 bg-blue-50'
+              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            onClick={() => setEnvironmentType('large')}
+          >
+            <div className="font-medium">大型结构 Large Structure</div>
+            <div className="text-sm text-gray-500">适用于大型景观构成、建筑等
+              <br />
+              Suitable for large scale landscapes and architecture
+            </div>
+            <div className="text-xs text-gray-400 mt-1">添加预设提示词：outdoor, national geopark, architecture planning, structure design, surreal art style</div>
+          </button>
+
+          <button
+            type="button"
+            className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'small'
+              ? 'border-blue-600 bg-blue-50'
+              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            onClick={() => setEnvironmentType('small')}
+          >
+            <div className="font-medium">小型结构 Small Structure</div>
+            <div className="text-sm text-gray-500">适用于小品、地标、石碑等小型构筑物
+              <br />
+              Suitable for small installations, landmarks, and monuments
+            </div>
+            <div className="text-xs text-gray-400 mt-1">添加预设提示词：studio photography, simple background, surreal art style</div>
+          </button>
+        </div>
+
+        {/* 自定义输入框始终显示，因为默认就是自定义模式 
+                          Custom input box always shown as it's the default mode */}
+        <div className="space-y-2">
+          <Textarea
+            placeholder="用英文输入自定义的环境提示词..."
+            value={customEnvironment}
+            onChange={(e) => setCustomEnvironment(e.target.value)}
+            className="min-h-[100px]"
+            disabled={environmentType !== 'custom'} // 只在自定义模式下可编辑
+          />
+          <p className="text-xs text-gray-500">用英文描述图像的背景、绿化、光照、艺术流派等
+            <br />
+            Describe background, vegetation, lighting, and art style IN ENGLISH
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <Label className="text-lg font-medium">视角 View</Label>
+        <div className="space-y-3">
+          <button
+            type="button"
+            className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'custom'
+              ? 'border-blue-600 bg-blue-50'
+              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            onClick={() => setViewType('custom')}
+          >
+            <div className="font-medium">自定义 Custom</div>
+            <div className="text-sm text-gray-500">自定义视角相关的提示词</div>
+          </button>
+
+          <button
+            type="button"
+            className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'aerial'
+              ? 'border-blue-600 bg-blue-50'
+              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            onClick={() => setViewType('aerial')}
+          >
+            <div className="font-medium">航拍视角 Aerial View</div>
+            <div className="text-sm text-gray-500">从高处俯视的视角
+              <br />
+              View from above
+            </div>
+            <div className="text-xs text-gray-400 mt-1">添加预设提示词：aerial view</div>
+          </button>
+        </div>
+
+        {/* 自定义输入框始终显示，因为默认就是自定义模式 
+                          Custom input box always shown as it's the default mode */}
+        <div className="space-y-2">
+          <Textarea
+            placeholder="用英文输入自定义的视角提示词..."
+            value={customView}
+            onChange={(e) => setCustomView(e.target.value)}
+            className="min-h-[100px]"
+            disabled={viewType !== 'custom'} // 只在自定义模式下可编辑
+          />
+        </div>
+      </div>
+    </>
+  )
+
+  // 提取共用的提示词预览
+  const PromptPreview = () => (
+    <div className="space-y-2 border rounded-lg p-4 bg-gray-50">
+      <div className="flex items-center justify-between">
+        <Label className="text-base font-medium">提示词预览 Prompt Preview</Label>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            navigator.clipboard.writeText(finalPrompt);
+          }}
+        >
+          复制 Copy
+        </Button>
+      </div>
+      <div className="space-y-1">
+        <Textarea
+          value={finalPrompt}
+          onChange={(e) => setFinalPrompt(e.target.value)}
+          className="min-h-[100px] font-mono"
+          placeholder={"请至少输入主体造型提示词\nPlease enter at least the shape prompt"}
+          style={{ whiteSpace: "pre-wrap" }}
+        />
+        <p className="text-xs text-gray-500">这是所有设置组合后的完整提示词，您可以直接编辑
+          <br />
+          This is the final combined prompt from all settings, you can edit it here
+        </p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex h-screen bg-gray-100 text-gray-800 overflow-hidden">
-      {/* 左侧：效果图生成和效果图编辑 */}
       <div className="w-1/2 p-8 overflow-y-auto">
-        <h1 className="text-4xl font-bold mb-8 text-gray-900">AI景观设计师</h1>
+        <h1 className="text-4xl font-bold mb-4 text-gray-900">GLAIRS</h1>
+        <h2 className="text-2xl font-bold mb-8 text-gray-400">Generative Landscape AI Inspiring and Rendering System</h2>
 
-        {/* 效果生成部分 */}
         <Collapsible open={isGenerateOpen} onOpenChange={setIsGenerateOpen} className="mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl">灵感生成</CardTitle>
+              <CardTitle className="text-2xl">获得灵感</CardTitle>
               <CollapsibleTrigger>
                 {isGenerateOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </CollapsibleTrigger>
@@ -389,28 +533,24 @@ export function LandscapeDesignerComponent() {
               <CardContent>
                 <Tabs defaultValue="text2img" onValueChange={(value) => setGenerationMode(value as 'text2img' | 'sketch2img')}>
                   <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="text2img">文字生成图像</TabsTrigger>
-                    <TabsTrigger value="sketch2img">手绘灵感发散</TabsTrigger>
+                    <TabsTrigger value="text2img">图像生成 Text to Image</TabsTrigger>
+                    <TabsTrigger value="sketch2img">手绘发散 Sketch Inspiration</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="text2img" className="space-y-6">
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">
-                        主体造型
-                        <span className="text-red-500 ml-2">*必填</span>
-                      </Label>
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入主体造型的提示词，例如：现代简约、自然有机、几何图形、古典优雅"
-                          value={shapePrompt}
-                          onChange={(e) => setShapePrompt(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                        <ImageUploader image={shapeReference} setImage={setShapeReference} label="主体参考图" sshConfig={sshConfig} sshPassword={sshPassword} />
+                    {/* 主体参考图和材质参考图（仅在text2img模式下显示） */}
+                    <div className="space-y-6">
+                      <CommonInputFields_Shape 
+                        shapePrompt={shapePrompt}
+                        setShapePrompt={setShapePrompt}
+                      />
+                      {/* text2img特有的参考图上传部分 */}
+                      <div className="space-y-4">
+                        <ImageUploader image={shapeReference} setImage={setShapeReference} label="造型参考" sshConfig={sshConfig} sshPassword={sshPassword} />
                         {shapeReference && (
                           <div>
                             <div className="flex justify-between items-center mb-2">
-                              <Label className="text-sm">主体参考强度</Label>
+                              <Label className="text-sm">造型参考强度 Reference Strength</Label>
                               <span className="text-sm font-medium">{shapeStrength.toFixed(1)}</span>
                             </div>
                             <Slider
@@ -421,25 +561,23 @@ export function LandscapeDesignerComponent() {
                               step={0.1}
                               className="mb-2"
                             />
-                            <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大</p>
+                            <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大
+                              <br />
+                              Higher value, stronger influence
+                            </p>
                           </div>
                         )}
                       </div>
-                    </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">材质</Label>
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入材质关键词，例如：木材、石材、金属、玻璃、混凝土"
-                          value={materialPrompt}
-                          onChange={(e) => setMaterialPrompt(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                        <ImageUploader image={materialReference} setImage={setMaterialReference} label="材质参考图" sshConfig={sshConfig} sshPassword={sshPassword} />
+                      <CommonInputFields_Material
+                        materialPrompt={materialPrompt}
+                        setMaterialPrompt={setMaterialPrompt}
+                      />
+                      <div className="space-y-4">
+                        <ImageUploader image={materialReference} setImage={setMaterialReference} label="材质参考" sshConfig={sshConfig} sshPassword={sshPassword} />
                         {materialReference && (
                           <div>
                             <div className="flex justify-between items-center mb-2">
-                              <Label className="text-sm">材质参考强度</Label>
+                              <Label className="text-sm">材质参考强度 Reference Strength</Label>
                               <span className="text-sm font-medium">{materialStrength.toFixed(1)}</span>
                             </div>
                             <Slider
@@ -450,129 +588,16 @@ export function LandscapeDesignerComponent() {
                               step={0.1}
                               className="mb-2"
                             />
-                            <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大</p>
+                            <p className="text-sm text-gray-500">值越高，参考图对生成图影响越大
+                              <br />
+                              Higher value, stronger influence
+                            </p>
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">环境设置（可选）</Label>
-                      <div className="space-y-3">
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'custom'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setEnvironmentType('custom')}
-                        >
-                          <div className="font-medium">自定义</div>
-                          <div className="text-sm text-gray-500">自定义环境相关的提示词</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'large'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setEnvironmentType('large')}
-                        >
-                          <div className="font-medium">大型结构</div>
-                          <div className="text-sm text-gray-500">适用于大型景观构筑物、地标性建筑等</div>
-                          <div className="text-xs text-gray-400 mt-1">添加提示词：outdoor, national geopark, architecture planning, structure design, surreal art style</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'small'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setEnvironmentType('small')}
-                        >
-                          <div className="font-medium">小型结构</div>
-                          <div className="text-sm text-gray-500">适用于小品、街道家具等小型构筑物</div>
-                          <div className="text-xs text-gray-400 mt-1">添加提示词：studio photography, simple background, surreal art style</div>
-                        </button>
-                      </div>
-
-                      {/* 自定义输入框始终显示，因为默认就是自定义模式 */}
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入自定义的环境提示词..."
-                          value={customEnvironment}
-                          onChange={(e) => setCustomEnvironment(e.target.value)}
-                          className="min-h-[100px]"
-                          disabled={environmentType !== 'custom'} // 只在自定义模式下可编辑
-                        />
-                        <p className="text-xs text-gray-500">描述作品的环境氛围、光照条件等</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">视角设置（可选）</Label>
-                      <div className="space-y-3">
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'custom'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setViewType('custom')}
-                        >
-                          <div className="font-medium">自定义</div>
-                          <div className="text-sm text-gray-500">自定义视角相关的提示词</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'aerial'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setViewType('aerial')}
-                        >
-                          <div className="font-medium">航拍视角</div>
-                          <div className="text-sm text-gray-500">从高处俯视的视角</div>
-                          <div className="text-xs text-gray-400 mt-1">添加提示词：aerial view</div>
-                        </button>
-                      </div>
-
-                      {/* 自定义输入框始终显示，因为默认就是自定义模式 */}
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入自定义的视角提示词..."
-                          value={customView}
-                          onChange={(e) => setCustomView(e.target.value)}
-                          className="min-h-[100px]"
-                          disabled={viewType !== 'custom'} // 只在自定义模式下可编辑
-                        />
-                        <p className="text-xs text-gray-500">描述观察视角，如：正视图、俯视图、仰视图等</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2 border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-base font-medium">总提示词预览</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(finalPrompt);
-                          }}
-                        >
-                          复制
-                        </Button>
-                      </div>
-                      <div className="space-y-1">
-                        <Textarea
-                          value={finalPrompt}
-                          onChange={(e) => setFinalPrompt(e.target.value)}
-                          className="min-h-[100px] font-mono"
-                          placeholder="请至少输入主���造型提示词"
-                        />
-                        <p className="text-xs text-gray-500">这是所有设置组合后的完整提示词，您可以直接编辑</p>
-                      </div>
-                    </div>
+                    <CommonSettings />
+                    <PromptPreview />
                     <Button
                       onClick={handleGenerate}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -581,10 +606,10 @@ export function LandscapeDesignerComponent() {
                       {isGenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          生成中...
+                          生成中... Generating...
                         </>
                       ) : (
-                        '图像生成'
+                        '图像生成 Generate'
                       )}
                     </Button>
                   </TabsContent>
@@ -593,7 +618,7 @@ export function LandscapeDesignerComponent() {
                     <div className="space-y-4">
                       <Label className="text-lg font-medium">
                         手绘图上传
-                        <span className="text-red-500 ml-2">*必填</span>
+                        <span className="text-red-500 ml-2">*必填 M</span>
                       </Label>
                       <ImageUploader
                         image={sketchImage}
@@ -621,147 +646,17 @@ export function LandscapeDesignerComponent() {
                         </div>
                       )}
                     </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">
-                        主体造型
-                        <span className="text-red-500 ml-2">*必填</span>
-                      </Label>
-                      <Textarea
-                        placeholder="输入主体造型的提示词，例如：现代简约、自然有机、几何图形、古典优雅"
-                        value={shapePrompt}
-                        onChange={(e) => setShapePrompt(e.target.value)}
-                        className="min-h-[100px]"
-                      />
-                    </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">材质</Label>
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入材质关键词，例如：木材、石材、金属、玻璃、混凝土"
-                          value={materialPrompt}
-                          onChange={(e) => setMaterialPrompt(e.target.value)}
-                          className="min-h-[100px]"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">环境设置（可选）</Label>
-                      <div className="space-y-3">
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'custom'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setEnvironmentType('custom')}
-                        >
-                          <div className="font-medium">自定义</div>
-                          <div className="text-sm text-gray-500">自定义环境相关的提示词</div>
-                        </button>
+                    <CommonInputFields_Shape 
+                      shapePrompt={shapePrompt}
+                      setShapePrompt={setShapePrompt}
+                    />
+                    <CommonInputFields_Material
+                      materialPrompt={materialPrompt}
+                      setMaterialPrompt={setMaterialPrompt}
+                    />
+                    <CommonSettings />
+                    <PromptPreview />
 
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'large'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setEnvironmentType('large')}
-                        >
-                          <div className="font-medium">大型结构</div>
-                          <div className="text-sm text-gray-500">适用于大型景观构筑物、地标性建筑等</div>
-                          <div className="text-xs text-gray-400 mt-1">添加提示词：outdoor, national geopark, architecture planning, structure design, surreal art style</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'small'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setEnvironmentType('small')}
-                        >
-                          <div className="font-medium">小型结构</div>
-                          <div className="text-sm text-gray-500">适用于小品、街道家具等小型构筑物</div>
-                          <div className="text-xs text-gray-400 mt-1">添加提示词：studio photography, simple background, surreal art style</div>
-                        </button>
-                      </div>
-
-                      {/* 自定义输入框始终显示，因为默认就是自定义模式 */}
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入自定义的环境提示词..."
-                          value={customEnvironment}
-                          onChange={(e) => setCustomEnvironment(e.target.value)}
-                          className="min-h-[100px]"
-                          disabled={environmentType !== 'custom'} // 只在自定义模式下可编辑
-                        />
-                        <p className="text-xs text-gray-500">描述作品的环境氛围、光照条件等</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <Label className="text-lg font-medium">视角设置（可选）</Label>
-                      <div className="space-y-3">
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'custom'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setViewType('custom')}
-                        >
-                          <div className="font-medium">自定义</div>
-                          <div className="text-sm text-gray-500">自定义视角相关的提示词</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'aerial'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => setViewType('aerial')}
-                        >
-                          <div className="font-medium">航拍视角</div>
-                          <div className="text-sm text-gray-500">从高处俯视的视角</div>
-                          <div className="text-xs text-gray-400 mt-1">添加提示词：aerial view</div>
-                        </button>
-                      </div>
-
-                      {/* 自定义输入框始终显示，因为默认就是自定义模式 */}
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="输入自定义的视角提示词..."
-                          value={customView}
-                          onChange={(e) => setCustomView(e.target.value)}
-                          className="min-h-[100px]"
-                          disabled={viewType !== 'custom'} // 只在自定义模式下可编辑
-                        />
-                        <p className="text-xs text-gray-500">描述观察视角，如：正视图、俯视图、仰视图等</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2 border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-base font-medium">总提示词预览</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(finalPrompt);
-                          }}
-                        >
-                          复制
-                        </Button>
-                      </div>
-                      <div className="space-y-1">
-                        <Textarea
-                          value={finalPrompt}
-                          onChange={(e) => setFinalPrompt(e.target.value)}
-                          className="min-h-[100px] font-mono"
-                          placeholder="请至少输入主体造型提示词"
-                        />
-                        <p className="text-xs text-gray-500">这是所有设置组合后的完整提示词，您可以直接编辑</p>
-                      </div>
-                    </div>
                     <Button
                       onClick={handleGenerate}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -780,114 +675,12 @@ export function LandscapeDesignerComponent() {
                 </Tabs>
               </CardContent>
             </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* todo */}
-        {/* Image editing function */}
-
-        {/* <Collapsible open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl">效果图编辑</CardTitle>
-              <CollapsibleTrigger>
-                {isEditOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
-              </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div className="mb-4">
-                  <Label className="text-lg mb-2">上传效果图</Label>
-                  <ImageUploader image={editImage} setImage={setEditImage} label="编辑效果图" size="large" />
-                </div>
-                <Tabs defaultValue="subject" className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-5 bg-gray-200 rounded-lg p-1">
-                    <TabsTrigger value="subject" className="data-[state=active]:bg-white">主体</TabsTrigger>
-                    <TabsTrigger value="paving" className="data-[state=active]:bg-white">铺装</TabsTrigger>
-                    <TabsTrigger value="plants" className="data-[state=active]:bg-white">植物</TabsTrigger>
-                    <TabsTrigger value="water" className="data-[state=active]:bg-white">水景</TabsTrigger>
-                    <TabsTrigger value="lighting" className="data-[state=active]:bg-white">光照</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="subject">
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-lg mb-2">材质</Label>
-                        <Input 
-                          placeholder="输入材质关键词" 
-                          value={materialKeyword}
-                          onChange={(e) => setMaterialKeyword(e.target.value)}
-                        />
-                        <p className="text-sm text-gray-500 mt-1">示：木材、石材、金属、玻璃、混凝土</p>
-                        <ImageUploader image={materialImage} setImage={setMaterialImage} label="材质参考图" />
-                      </div>
-                      <div>
-                        <Label className="text-lg mb-2">表面处理</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="选择表面处理" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="polished">抛光</SelectItem>
-                            <SelectItem value="rough">粗糙</SelectItem>
-                            <SelectItem value="textured">纹理</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-lg mb-2">照明强度</Label>
-                        <Slider defaultValue={[50]} max={100} step={1} />
-                      </div>
-                      <div>
-                        <Label className="text-lg mb-2">色彩饱和度</Label>
-                        <Slider defaultValue={[50]} max={100} step={1} />
-                      </div>
-                      <div>
-                        <Label className="text-lg mb-2">造型灵感</Label>
-                        <Input 
-                          placeholder="输入造型灵感关键词" 
-                          value={inspirationKeyword}
-                          onChange={(e) => setInspirationKeyword(e.target.value)}
-                        />
-                        <p className="text-sm text-gray-500 mt-1">示例：现代简约、自然有机、几何图形、古典优雅</p>
-                        <ImageUploader image={inspirationImage} setImage={setInspirationImage} label="灵感参考图" />
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                </Tabs>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <Button 
-                          onClick={handleEdit} 
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                          disabled={!editImage || isEditing}
-                        >
-                          {isEditing ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              编辑中...
-                            </>
-                          ) : (
-                            '应用编辑'
-                          )}
-                        </Button>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{!editImage ? "请上传需要编辑的效果图" : "点击应用编辑"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible> */}
-      </div>
+          </Card >
+        </Collapsible >
+      </div >
 
       {/* 右侧：控制面板 */}
-      <div className="w-1/2 p-8 space-y-8 bg-white overflow-y-auto">
+      < div className="w-1/2 p-8 space-y-8 bg-white overflow-y-auto" >
         <div className="space-y-4">
           <Input
             placeholder="输入SSH命令 (格式: ssh -p <端口> <用户>@<主机>)"
@@ -950,7 +743,7 @@ export function LandscapeDesignerComponent() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   )
 }
