@@ -37,6 +37,8 @@ next-env.d.ts
 
 # generation output
 /public/output/*
+!/public/output/.gitkeep
 
 # reference images local backup
 /public/input/*
+!/public/input/.gitkeep

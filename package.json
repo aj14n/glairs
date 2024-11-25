@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "ssh2": "^1.16.0",
     "lucide-react": "^0.460.0",
     "tailwindcss-animate": "^1.0.7",
     "@radix-ui/react-collapsible": "^1.1.1",
