@@ -27,7 +27,8 @@ export async function POST(req: Request) {
     // 保存到本地备份
     const localBytes = await file.arrayBuffer()
     const localBuffer = Buffer.from(localBytes)
-    const localFilename = `${Date.now()}-${file.name}`
+    const randomNum = Math.floor(Math.random() * 1001) // 生成0-1000的随机数
+    const localFilename = `${Date.now()}-${randomNum}`
     const localPath = path.join(process.cwd(), 'public', 'input', localFilename)
     
     // 确保input目录存在
