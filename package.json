@@ -9,9 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "ssh2": "^1.16.0",
-    "lucide-react": "^0.460.0",
-    "tailwindcss-animate": "^1.0.7",
     "@radix-ui/react-collapsible": "^1.1.1",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slider": "^1.2.1",
@@ -19,10 +16,13 @@
     "@radix-ui/react-tabs": "^1.1.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "lucide-react": "^0.460.0",
     "next": "14.2.16",
     "react": "^18",
     "react-dom": "^18",
+    "ssh2": "^1.16.0",
     "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7",
     "ws": "^8.18.0"
   },
   "devDependencies": {

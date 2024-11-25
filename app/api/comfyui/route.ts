@@ -56,20 +56,29 @@ export async function POST(req: Request) {
         // 更新提示词
         workflow["6"]["inputs"]["text"] = promptText;
 
+        // 添加路径前缀处理函数
+        const getImagePath = (filename: string | null, sshConfig: boolean) => {
+            if (!filename) return null;
+            // 如果有SSH配置，使用远程路径；否则使用本地路径
+            return sshConfig 
+                ? `/root/autodl-tmp/input/${filename.split('/').pop()}`
+                : path.join(process.cwd(), 'public', 'input', filename.split('/').pop() || '');
+        }
+
         if (mode === 'sketch2img') {
             // 更新手绘图路径和强度
-            workflow["13"]["inputs"]["image"] = `/root/autodl-tmp/input/${sketchImage.split('/').pop()}`;
+            workflow["13"]["inputs"]["image"] = getImagePath(sketchImage, !!req.headers.get('ssh-config'));
             workflow["18"]["inputs"]["strength"] = sketchStrength || 0.5;
         } else {
             // 原有的参考图处理逻辑
             if (shapeReference && materialReference) {
-                workflow["13"]["inputs"]["image"] = `/root/autodl-tmp/input/${shapeReference.split('/').pop()}`;
-                workflow["19"]["inputs"]["image"] = `/root/autodl-tmp/input/${materialReference.split('/').pop()}`;
+                workflow["13"]["inputs"]["image"] = getImagePath(shapeReference, !!req.headers.get('ssh-config'));
+                workflow["19"]["inputs"]["image"] = getImagePath(materialReference, !!req.headers.get('ssh-config'));
                 workflow["18"]["inputs"]["weight_style"] = materialStrength || 0.5;
                 workflow["18"]["inputs"]["weight_composition"] = shapeStrength || 0.5;
             } else if (shapeReference || materialReference) {
                 const reference = shapeReference || materialReference;
-                workflow["13"]["inputs"]["image"] = `/root/autodl-tmp/input/${reference.split('/').pop()}`;
+                workflow["13"]["inputs"]["image"] = getImagePath(reference, !!req.headers.get('ssh-config'));
                 workflow["22"]["inputs"]["weight"] = shapeReference ? shapeStrength : materialStrength || 0.5;
                 workflow["22"]["inputs"]["weight_type"] = shapeReference ? "composition" : "style transfer";
             }

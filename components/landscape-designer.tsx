@@ -275,51 +275,58 @@ export function LandscapeDesignerComponent() {
     if (!shapePrompt.trim()) return
     setIsGenerating(true)
     try {
-      const params = {
-        promptText: finalPrompt,
-        mode: generationMode,
-        sketchImage: sketchImage ? '/input/' + sketchImage.split('/').pop() : null,
-        sketchStrength,
-        shapeReference: generationMode === 'text2img' ? (shapeReference ? '/input/' + shapeReference.split('/').pop() : null) : null,
-        materialReference: generationMode === 'text2img' ? (materialReference ? '/input/' + materialReference.split('/').pop() : null) : null,
-        shapeStrength,
-        materialStrength,
-      };
+        const params = {
+            promptText: finalPrompt,
+            mode: generationMode,
+            sketchImage: sketchImage,
+            sketchStrength,
+            shapeReference: generationMode === 'text2img' ? shapeReference : null,
+            materialReference: generationMode === 'text2img' ? materialReference : null,
+            shapeStrength,
+            materialStrength,
+        };
 
-      console.log('发送参数 Send Parameters:', params);
+        console.log('发送参数:', params);
 
-      const response = await fetch('/api/comfyui', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        if (data.workflow) {
-          console.log('Workflow:', JSON.stringify(data.workflow, null, 2));
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+        
+        // 如果存在SSH配置，添加到请求头
+        if (sshConfig) {
+            headers['ssh-config'] = 'true';
         }
 
-        console.log('生成成功 Generation Success:', {
-          imagePath: data.imagePath,
+        const response = await fetch('/api/comfyui', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(params),
         });
 
-        setGeneratedImage(data.imagePath);
-        setHistory(prev => {
-          const newHistory = [data.imagePath, ...prev];
-          return newHistory.slice(0, 48);
-        });
-      } else {
-        console.error('生成失败 Generation Failed:', data.error);
-        throw new Error(data.error);
-      }
+        const data = await response.json();
+        if (data.success) {
+            if (data.workflow) {
+                console.log('Workflow:', JSON.stringify(data.workflow, null, 2));
+            }
+
+            console.log('生成成功 Generation Success:', {
+                imagePath: data.imagePath,
+            });
+
+            setGeneratedImage(data.imagePath);
+            setHistory(prev => {
+                const newHistory = [data.imagePath, ...prev];
+                return newHistory.slice(0, 48);
+            });
+        } else {
+            console.error('生成失败 Generation Failed:', data.error);
+            throw new Error(data.error);
+        }
     } catch (error) {
-      console.error('生成过程出错 Generation Error:', error);
-      alert('生成失败，请重试\nGeneration Failed, Please Try Again');
+        console.error('生成过程出错 Generation Error:', error);
+        alert('生成失败，请重试\nGeneration Failed, Please Try Again');
     } finally {
-      setIsGenerating(false);
+        setIsGenerating(false);
     }
   }
 
