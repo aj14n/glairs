@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, memo, createContext, useContext } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Upload, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { OptionSelector } from "@/components/ui/option-selector"
 
 interface ImageUploaderProps {
   image: string | null;
@@ -198,6 +199,334 @@ const CommonInputFields_Material = memo(({
   </div>
 ));
 
+// 添加新的类型定义
+type DesignSuggestion = {
+  id: number;
+  productName: string;
+  description: string;
+  shapePrompt: string;
+}
+
+// 模拟的设计建议数据
+// const MOCK_SUGGESTIONS: DesignSuggestion[] = [
+//   {
+//     id: 1,
+//     productName: "山水剪影T恤 Mountain Silhouette T-Shirt",
+//     description: "将黄山标志性的松树怪石剪影印在T恤上，体现出黄山的神秘与壮美",
+//     shapePrompt: "minimalist t-shirt design featuring silhouettes of huangshan pine trees and unique rock formations, zen style artwork, clean lines, modern fashion illustration",
+//   },
+//   {
+//     id: 2,
+//     productName: "云海杯垫 Sea of Clouds Coaster",
+//     description: "以黄山云海为灵感的圆形杯垫，采用层次分明的云雾效果",
+//     shapePrompt: "circular coaster design with layered clouds pattern, ethereal mist effect, abstract mountain peaks emerging from clouds, zen aesthetic",
+//   },
+//   {
+//     id: 3,
+//     productName: "迎客松徽章 Welcome Pine Badge",
+//     description: "将黄山最著名的迎客松图案制作成精致的金属徽章",
+//     shapePrompt: "elegant metal pin badge design featuring the iconic welcoming pine tree of huangshan, detailed botanical illustration, metallic finish",
+//   }
+// ];
+
+// 修改后的LocationInputAndSuggestions组件
+const LocationInputAndSuggestions = memo(({ 
+  onSelectSuggestion,
+  currentShapePrompt,
+  onClearSelection
+}: {
+  onSelectSuggestion: (suggestion: DesignSuggestion | null) => void;
+  currentShapePrompt: string;
+  onClearSelection: () => void;
+}) => {
+  const [locationDescription, setLocationDescription] = useState('');
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const { suggestions, setSuggestions } = useContext(SuggestionsContext);
+
+  const handleGenerateSuggestions = async () => {
+    if (!locationDescription.trim()) return;
+    
+    setIsGeneratingSuggestions(true);
+    try {
+      const response = await fetch('/api/generate-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ locationDescription }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSuggestions(data.suggestions);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('获取建议失败:', error);
+      alert('获取建议失败，请重试\nFailed to get suggestions, please try again');
+    } finally {
+      setIsGeneratingSuggestions(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 旅游地点描述输入 */}
+      <div className="space-y-4">
+        <Label className="text-lg font-medium">
+          旅游地点描述 Location Description
+          <span className="text-red-500 ml-2">*必填 Mandatory</span>
+        </Label>
+        <div className="space-y-2">
+          <Textarea
+            placeholder="请描述这个旅游地点的特色，如：黄山是中国著名的山岳景区，以奇松、怪石、云海闻名..."
+            value={locationDescription}
+            onChange={(e) => setLocationDescription(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <p className="text-xs text-gray-500">
+            描述越详细，生成的设计建议越贴切
+            <br />
+            More detailed description leads to better design suggestions
+          </p>
+        </div>
+        <Button
+          onClick={handleGenerateSuggestions}
+          disabled={!locationDescription.trim() || isGeneratingSuggestions}
+          className="w-full"
+        >
+          {isGeneratingSuggestions ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              生成设计建议中... Generating suggestions...
+            </>
+          ) : (
+            '获取设计建议 Get Design Suggestions'
+          )}
+        </Button>
+      </div>
+
+      {/* 设计建议展示 */}
+      {suggestions.length > 0 && (
+        <OptionSelector
+          label="设计建议 Design Suggestions"
+          options={suggestions.map(suggestion => ({
+            id: suggestion.id.toString(),
+            title: suggestion.productName,
+            description: suggestion.description,
+            value: suggestion.shapePrompt
+          }))}
+          value={suggestions.find(s => s.shapePrompt === currentShapePrompt)?.id.toString() || null}
+          onChange={(id) => {
+            if (!id) {
+              onClearSelection();
+              return;
+            }
+            const suggestion = suggestions.find(s => s.id.toString() === id);
+            if (suggestion) {
+              onSelectSuggestion(suggestion);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+});
+
+// 添加Context
+const SuggestionsContext = createContext<{
+  suggestions: DesignSuggestion[];
+  setSuggestions: (suggestions: DesignSuggestion[]) => void;
+}>({
+  suggestions: [],
+  setSuggestions: () => {}
+});
+
+// 修改提示词预览组件
+const PromptPreview = memo(({ 
+  finalPrompt, 
+  setFinalPrompt,
+  setShapePrompt,
+  setMaterialPrompt
+}: { 
+  finalPrompt: string; 
+  setFinalPrompt: (value: string) => void;
+  setShapePrompt: (value: string) => void;
+  setMaterialPrompt: (value: string) => void;
+}) => (
+  <div className="space-y-2 border rounded-lg p-4 bg-gray-50">
+    <div className="flex items-center justify-between">
+      <Label className="text-base font-medium">提示词预览 Prompt Preview</Label>
+      <div className="space-x-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setFinalPrompt('');
+            setShapePrompt('');
+            setMaterialPrompt('');
+          }}
+        >
+          清空 Clear
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            navigator.clipboard.writeText(finalPrompt);
+          }}
+        >
+          复制 Copy
+        </Button>
+      </div>
+    </div>
+    <div className="space-y-1">
+      <Textarea
+        value={finalPrompt}
+        onChange={(e) => setFinalPrompt(e.target.value)}
+        className="min-h-[100px] font-mono"
+        placeholder={"请至少输入主体造型提示词\nPlease enter at least the shape prompt"}
+        style={{ whiteSpace: "pre-wrap" }}
+      />
+      <p className="text-xs text-gray-500">这是所有设置组合后的完整提示词，您可以直接编辑
+        <br />
+        This is the final combined prompt from all settings, you can edit it here
+      </p>
+    </div>
+  </div>
+));
+
+// 修改环境类型定义
+type EnvironmentType = 'large' | 'small';
+type ViewType = 'aerial' | 'front';
+
+// 提取到组件外部的常量
+const environmentOptions = [
+  {
+    id: 'large',
+    title: '大型结构 Large Structure',
+    description: '适用于大型景观构成、建筑等\nSuitable for large scale landscapes and architecture',
+    value: 'outdoor, national geopark, architecture planning, structure design, surreal art style',
+    additionalInfo: '添加预设提示词：outdoor, national geopark, architecture planning, structure design, surreal art style'
+  },
+  {
+    id: 'small',
+    title: '小型结构 Small Structure',
+    description: '适用于小品、地标石碑等小型构筑物\nSuitable for small installations, landmarks, and monuments',
+    value: 'studio photography, simple background, surreal art style',
+    additionalInfo: '添加预设提示词：studio photography, simple background, surreal art style'
+  }
+];
+
+const viewOptions = [
+  {
+    id: 'aerial',
+    title: '航拍视角 Aerial View',
+    description: '从高处俯视的视角\nView from above',
+    value: 'aerial view',
+    additionalInfo: '添加预设提示词：aerial view'
+  },
+  {
+    id: 'front',
+    title: '正面视角 Front View',
+    description: '从正面观察的视角\nView from front',
+    value: 'front view',
+    additionalInfo: '添加预设提示词：front view'
+  }
+];
+
+const CommonSettings = ({ 
+  environmentType, 
+  setEnvironmentType,
+  viewType,
+  setViewType 
+}: {
+  environmentType: EnvironmentType | null;
+  setEnvironmentType: (value: EnvironmentType | null) => void;
+  viewType: ViewType | null;
+  setViewType: (value: ViewType | null) => void;
+}) => {
+  return (
+    <>
+      <OptionSelector<EnvironmentType>
+        label="环境 Environment"
+        options={environmentOptions}
+        value={environmentType}
+        onChange={setEnvironmentType}
+      />
+
+      <OptionSelector<ViewType>
+        label="视角 View"
+        options={viewOptions}
+        value={viewType}
+        onChange={setViewType}
+      />
+    </>
+  );
+};
+
+// 定义生成模式类型
+type GenerationMode = 'text2img' | 'sketch2img' | 'souvenir';
+
+const GenerateButton = memo(({ 
+  onClick,
+  isGenerating,
+  disabled = false,
+  mode,  // 新增 mode 参数
+}: { 
+  onClick: (mode: GenerationMode) => void;
+  isGenerating: boolean;
+  disabled: boolean;
+  mode: GenerationMode;
+}) => {
+  return (
+    <Button
+      onClick={() => onClick(mode)}
+      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+      disabled={disabled || isGenerating}
+    >
+      {isGenerating ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          生成中... Generating...
+        </>
+      ) : (
+        '图像生成 Generate'
+      )}
+    </Button>
+  );
+});
+
+// 添加预设周边选项常量
+const souvenirPresets = [
+  {
+    id: 'badge',
+    title: '纪念徽章 Badge',
+    description: '将景点元素制作成精致的纪念章\nCreate delicate badges with scenic elements',
+    value: 'lapel pin, badge design, metal accessory, detailed emblem, miniature collectible item, professional product photography, indoor studio light, simple background, close up, product sharp focus'
+  },
+  {
+    id: 'hat',
+    title: '帽子 Hat',
+    description: '将景点元素融入帽子设计\nIncorporate scenic elements into hat design',
+    value: 'fashion baseball cap, embroidered pattern, casual headwear, adjustable snapback, lifestyle product photography, indoor studio light, simple background, close up, product sharp focus'
+  },
+  {
+    id: 'teacup',
+    title: '茶杯 Teacup',
+    description: '将景点元素装饰在茶杯表面\nDecorate teacup surface with scenic elements',
+    value: 'teacup, decorative craft pattern, drinkware, studio product photography,  indoor studio light, simple background, close up, product sharp focus'
+  },
+  {
+    id: 'bag',
+    title: '手提袋 Tote Bag',
+    description: '将景点元素融入环保手提袋设计\nIncorporate scenic elements into eco-friendly tote bag design',
+    value: 'canvas tote bag, fabric shopping bag, screen printed pattern, reusable eco bag, casual fashion accessory, durable material, lifestyle product photography, indoor studio light, simple background, sharp focus'
+  }
+];
+
 export function LandscapeDesignerComponent() {
   // 从localStorage初始化SSH配置 
   // Initialize SSH Config from LocalStorage
@@ -214,7 +543,7 @@ export function LandscapeDesignerComponent() {
   } | null>(null)
   const [generatedImage, setGeneratedImage] = useState('')
   const [history, setHistory] = useState<string[]>([])
-  const [isGenerateOpen, setIsGenerateOpen] = useState(true)
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [shapePrompt, setShapePrompt] = useState('')
@@ -223,67 +552,62 @@ export function LandscapeDesignerComponent() {
   const [materialPrompt, setMaterialPrompt] = useState('')
   const [materialReference, setMaterialReference] = useState<string | null>(null)
   const [materialStrength, setMaterialStrength] = useState(0.5)
-  const [environmentType, setEnvironmentType] = useState<'large' | 'small' | 'custom'>('custom')
-  const [customEnvironment, setCustomEnvironment] = useState('')
+  const [environmentType, setEnvironmentType] = useState<EnvironmentType | null>(null);
+  const [viewType, setViewType] = useState<ViewType | null>(null);
   const [finalPrompt, setFinalPrompt] = useState('')
-  const [viewType, setViewType] = useState<'custom' | 'aerial'>('custom')
-  const [customView, setCustomView] = useState('')
-  const [generationMode, setGenerationMode] = useState<'text2img' | 'sketch2img'>('text2img')
   const [sketchImage, setSketchImage] = useState<string | null>(null)
   const [sketchStrength, setSketchStrength] = useState(0.5)
+  const [isSouvenirOpen, setIsSouvenirOpen] = useState(false)
+  const [souvenirType, setSouvenirType] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<DesignSuggestion[]>([]);
 
   const getEnvironmentPrompt = () => {
-    switch (environmentType) {
-      case 'large':
-        return 'outdoor, national geopark, architecture planning, structure design, surreal art style'
-      case 'small':
-        return 'studio photography, simple background, surreal art style'
-      case 'custom':
-        return customEnvironment
-      default:
-        return ''
-    }
-  }
+    if (!environmentType) return '';
+    const selectedOption = environmentOptions.find(opt => opt.id === environmentType);
+    return selectedOption?.value || '';
+  };
 
   const getViewPrompt = () => {
-    switch (viewType) {
-      case 'aerial':
-        return 'aerial view'
-      case 'custom':
-        return customView
-      default:
-        return ''
-    }
-  }
+    if (!viewType) return '';
+    const selectedOption = viewOptions.find(opt => opt.id === viewType);
+    return selectedOption?.value || '';
+  };
+
+  const getSouvenirPrompt = () => {
+    if (!souvenirType) return '';
+    const selectedOption = souvenirPresets.find(opt => opt.id === souvenirType);
+    return selectedOption?.value || '';
+  };
 
   const getCombinedPrompt = () => {
     const parts = [
       shapePrompt.trim() ? `${shapePrompt.trim()},` : '',
       materialPrompt.trim() ? `${materialPrompt.trim()},` : '',
       getEnvironmentPrompt().trim() ? `${getEnvironmentPrompt().trim()},` : '',
-      getViewPrompt().trim() ? `${getViewPrompt().trim()},` : ''
+      getViewPrompt().trim() ? `${getViewPrompt().trim()},` : '',
+      getSouvenirPrompt().trim() ? `${getSouvenirPrompt().trim()},` : ''
     ].filter(Boolean);
 
     return parts.join(' ');
-  }
+  };
 
   useEffect(() => {
     setFinalPrompt(getCombinedPrompt());
-  }, [shapePrompt, materialPrompt, environmentType, customEnvironment, viewType, customView]);
+  }, [shapePrompt, materialPrompt, environmentType, viewType, souvenirType]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (mode: GenerationMode) => {
     if (!shapePrompt.trim()) return
     setIsGenerating(true)
     try {
         const params = {
             promptText: finalPrompt,
-            mode: generationMode,
-            sketchImage: sketchImage,
-            sketchStrength,
-            shapeReference: generationMode === 'text2img' ? shapeReference : null,
-            materialReference: generationMode === 'text2img' ? materialReference : null,
-            shapeStrength,
-            materialStrength,
+            mode,
+            sketchImage: mode === 'sketch2img' ? sketchImage : null,
+            sketchStrength: mode === 'sketch2img' ? sketchStrength : null,
+            shapeReference: mode === 'text2img' ? shapeReference : null,
+            materialReference: mode === 'text2img' ? materialReference : null,
+            shapeStrength: mode === 'text2img' ? shapeStrength : null,
+            materialStrength: mode === 'text2img' ? materialStrength : null,
         };
 
         console.log('发送参数:', params);
@@ -379,7 +703,7 @@ export function LandscapeDesignerComponent() {
     return false
   }
 
-  // 使用useEffect保存到localStorage
+  // 使用useEffect存到localStorage
   // Save to LocalStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -403,152 +727,6 @@ export function LandscapeDesignerComponent() {
     }
   }, [])
 
-  // 提取共用的环境和视角设置
-  const CommonSettings = () => (
-    <>
-      <div className="space-y-4">
-        <Label className="text-lg font-medium">环境 Environment</Label>
-        <div className="space-y-3">
-          <button
-            type="button"
-            className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'custom'
-              ? 'border-blue-600 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            onClick={() => setEnvironmentType('custom')}
-          >
-            <div className="font-medium">自定义 Custom</div>
-            <div className="text-sm text-gray-500">自定义环境相关的提示词</div>
-          </button>
-
-          <button
-            type="button"
-            className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'large'
-              ? 'border-blue-600 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            onClick={() => setEnvironmentType('large')}
-          >
-            <div className="font-medium">大型结构 Large Structure</div>
-            <div className="text-sm text-gray-500">适用于大型景观构成、建筑等
-              <br />
-              Suitable for large scale landscapes and architecture
-            </div>
-            <div className="text-xs text-gray-400 mt-1">添加预设提示词：outdoor, national geopark, architecture planning, structure design, surreal art style</div>
-          </button>
-
-          <button
-            type="button"
-            className={`w-full text-left p-4 rounded-lg border transition-colors ${environmentType === 'small'
-              ? 'border-blue-600 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            onClick={() => setEnvironmentType('small')}
-          >
-            <div className="font-medium">小型结构 Small Structure</div>
-            <div className="text-sm text-gray-500">适用于小品、地标、石碑等小型构筑物
-              <br />
-              Suitable for small installations, landmarks, and monuments
-            </div>
-            <div className="text-xs text-gray-400 mt-1">添加预设提示词：studio photography, simple background, surreal art style</div>
-          </button>
-        </div>
-
-        {/* 自定义输入框始终显示，因为默认就是自定义模式 
-                          Custom input box always shown as it's the default mode */}
-        <div className="space-y-2">
-          <Textarea
-            placeholder="用英文输入自定义的环境提示词..."
-            value={customEnvironment}
-            onChange={(e) => setCustomEnvironment(e.target.value)}
-            className="min-h-[100px]"
-            disabled={environmentType !== 'custom'} // 只在自定义模式下可编辑
-          />
-          <p className="text-xs text-gray-500">用英文描述图像的背景、绿化、光照、艺术流派等
-            <br />
-            Describe background, vegetation, lighting, and art style IN ENGLISH
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <Label className="text-lg font-medium">视角 View</Label>
-        <div className="space-y-3">
-          <button
-            type="button"
-            className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'custom'
-              ? 'border-blue-600 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            onClick={() => setViewType('custom')}
-          >
-            <div className="font-medium">自定义 Custom</div>
-            <div className="text-sm text-gray-500">自定义视角相关的提示词</div>
-          </button>
-
-          <button
-            type="button"
-            className={`w-full text-left p-4 rounded-lg border transition-colors ${viewType === 'aerial'
-              ? 'border-blue-600 bg-blue-50'
-              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            onClick={() => setViewType('aerial')}
-          >
-            <div className="font-medium">航拍视角 Aerial View</div>
-            <div className="text-sm text-gray-500">从高处俯视的视角
-              <br />
-              View from above
-            </div>
-            <div className="text-xs text-gray-400 mt-1">添加预设提示词：aerial view</div>
-          </button>
-        </div>
-
-        {/* 自定义输入框始终显示，因为默认就是自定义模式 
-                          Custom input box always shown as it's the default mode */}
-        <div className="space-y-2">
-          <Textarea
-            placeholder="用英文输入自定义的视角提示词..."
-            value={customView}
-            onChange={(e) => setCustomView(e.target.value)}
-            className="min-h-[100px]"
-            disabled={viewType !== 'custom'} // 只在自定义模式下可编辑
-          />
-        </div>
-      </div>
-    </>
-  )
-
-  // 提取共用的提示词预览
-  const PromptPreview = () => (
-    <div className="space-y-2 border rounded-lg p-4 bg-gray-50">
-      <div className="flex items-center justify-between">
-        <Label className="text-base font-medium">提示词预览 Prompt Preview</Label>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            navigator.clipboard.writeText(finalPrompt);
-          }}
-        >
-          复制 Copy
-        </Button>
-      </div>
-      <div className="space-y-1">
-        <Textarea
-          value={finalPrompt}
-          onChange={(e) => setFinalPrompt(e.target.value)}
-          className="min-h-[100px] font-mono"
-          placeholder={"请至少输入主体造型提示词\nPlease enter at least the shape prompt"}
-          style={{ whiteSpace: "pre-wrap" }}
-        />
-        <p className="text-xs text-gray-500">这是所有设置组合后的完整提示词，您可以直接编辑
-          <br />
-          This is the final combined prompt from all settings, you can edit it here
-        </p>
-      </div>
-    </div>
-  )
-
   return (
     <div className="flex h-screen bg-gray-100 text-gray-800 overflow-hidden">
       <div className="w-1/2 p-8 overflow-y-auto">
@@ -558,27 +736,27 @@ export function LandscapeDesignerComponent() {
         <Collapsible open={isGenerateOpen} onOpenChange={setIsGenerateOpen} className="mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-2xl">获得灵感</CardTitle>
+              <CardTitle className="text-2xl">景观设计</CardTitle>
               <CollapsibleTrigger>
                 {isGenerateOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </CollapsibleTrigger>
             </CardHeader>
             <CollapsibleContent>
               <CardContent>
-                <Tabs defaultValue="text2img" onValueChange={(value) => setGenerationMode(value as 'text2img' | 'sketch2img')}>
+                <Tabs defaultValue="text2img">
                   <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="text2img">图像生成 Text to Image</TabsTrigger>
                     <TabsTrigger value="sketch2img">手绘发散 Sketch Inspiration</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="text2img" className="space-y-6">
-                    {/* 主体参考图和材质参考图（仅在text2img模式下显示） */}
+                    {/* 体参考图和材质参考图（在text2img模式下显示） */}
                     <div className="space-y-6">
                       <CommonInputFields_Shape 
                         shapePrompt={shapePrompt}
                         setShapePrompt={setShapePrompt}
                       />
-                      {/* text2img特有的参考图上传部分 */}
+                      {/* text2img特的参考图上传部分 */}
                       <div className="space-y-4">
                         <ImageUploader image={shapeReference} setImage={setShapeReference} label="造型参考" sshConfig={sshConfig} sshPassword={sshPassword} />
                         {shapeReference && (
@@ -630,29 +808,31 @@ export function LandscapeDesignerComponent() {
                         )}
                       </div>
                     </div>
-                    <CommonSettings />
-                    <PromptPreview />
-                    <Button
+                    <CommonSettings 
+                      environmentType={environmentType}
+                      setEnvironmentType={setEnvironmentType}
+                      viewType={viewType}
+                      setViewType={setViewType}
+                    />
+                    <PromptPreview 
+                      finalPrompt={finalPrompt}
+                      setFinalPrompt={setFinalPrompt}
+                      setShapePrompt={setShapePrompt}
+                      setMaterialPrompt={setMaterialPrompt}
+                    />
+                    <GenerateButton
                       onClick={handleGenerate}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      disabled={!shapePrompt.trim() || isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          生成中... Generating...
-                        </>
-                      ) : (
-                        '图像生成 Generate'
-                      )}
-                    </Button>
+                      isGenerating={isGenerating}
+                      disabled={!shapePrompt.trim()}
+                      mode="text2img"
+                    />
                   </TabsContent>
 
                   <TabsContent value="sketch2img" className="space-y-6">
                     <div className="space-y-4">
                       <Label className="text-lg font-medium">
                         手绘图上传
-                        <span className="text-red-500 ml-2">*必填 M</span>
+                        <span className="text-red-500 ml-2">*必填 Mandatory</span>
                       </Label>
                       <ImageUploader
                         image={sketchImage}
@@ -688,29 +868,110 @@ export function LandscapeDesignerComponent() {
                       materialPrompt={materialPrompt}
                       setMaterialPrompt={setMaterialPrompt}
                     />
-                    <CommonSettings />
-                    <PromptPreview />
+                    <CommonSettings 
+                      environmentType={environmentType}
+                      setEnvironmentType={setEnvironmentType}
+                      viewType={viewType}
+                      setViewType={setViewType}
+                    />
+                    <PromptPreview 
+                      finalPrompt={finalPrompt}
+                      setFinalPrompt={setFinalPrompt}
+                      setShapePrompt={setShapePrompt}
+                      setMaterialPrompt={setMaterialPrompt}
+                    />
 
-                    <Button
+                    <GenerateButton
                       onClick={handleGenerate}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      disabled={!sketchImage || !shapePrompt.trim() || isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          生成中...
-                        </>
-                      ) : (
-                        '灵感发散'
-                      )}
-                    </Button>
+                      isGenerating={isGenerating}
+                      disabled={!sketchImage || !shapePrompt.trim()}
+                      mode="sketch2img"
+                    />
                   </TabsContent>
                 </Tabs>
               </CardContent>
             </CollapsibleContent>
           </Card >
         </Collapsible >
+
+        {/* 新增周边设计模块 */}
+        <Collapsible open={isSouvenirOpen} onOpenChange={setIsSouvenirOpen} className="mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-2xl">周边设计</CardTitle>
+              <CollapsibleTrigger>
+                {isSouvenirOpen ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
+                <Tabs defaultValue="presets">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="presets">预设周边 Presets</TabsTrigger>
+                    <TabsTrigger value="ai">AI建议 AI Suggestions</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="presets" className="space-y-6">
+                    {/* 预设周边内容 */}
+                    <CommonInputFields_Shape 
+                      shapePrompt={shapePrompt}
+                      setShapePrompt={setShapePrompt}
+                    />
+                    
+                    <OptionSelector
+                      label="周边类型 Souvenir Type"
+                      options={souvenirPresets}
+                      value={souvenirType}
+                      onChange={setSouvenirType}
+                    />
+
+                    <PromptPreview 
+                      finalPrompt={finalPrompt}
+                      setFinalPrompt={setFinalPrompt}
+                      setShapePrompt={setShapePrompt}
+                      setMaterialPrompt={setMaterialPrompt}
+                    />
+
+                    <GenerateButton
+                      onClick={handleGenerate}
+                      isGenerating={isGenerating}
+                      disabled={!shapePrompt.trim()}
+                      mode="souvenir"
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="space-y-6">
+                    <SuggestionsContext.Provider value={{ suggestions, setSuggestions }}>
+                      <LocationInputAndSuggestions 
+                        onSelectSuggestion={(suggestion) => {
+                          setShapePrompt(suggestion ? suggestion.shapePrompt : '');
+                        }}
+                        currentShapePrompt={shapePrompt}
+                        onClearSelection={() => {
+                          setShapePrompt('');
+                        }}
+                      />
+                    </SuggestionsContext.Provider>
+
+                    <PromptPreview 
+                      finalPrompt={finalPrompt}
+                      setFinalPrompt={setFinalPrompt}
+                      setShapePrompt={setShapePrompt}
+                      setMaterialPrompt={setMaterialPrompt}
+                    />
+
+                    <GenerateButton
+                      onClick={handleGenerate}
+                      isGenerating={isGenerating}
+                      disabled={!shapePrompt.trim()}
+                      mode="souvenir"
+                    />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </div >
 
       {/* 右侧：控制面板 */}

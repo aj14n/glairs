@@ -3,14 +3,24 @@ import fs from 'fs';
 import path from 'path';
 import WebSocket from 'ws';
 
-// const SERVER_ADDRESS = "127.0.0.1:8188";
-const SERVER_ADDRESS = "127.0.0.1:6006";
+const SERVER_ADDRESS = "127.0.0.1:8188";
+// const SERVER_ADDRESS = "127.0.0.1:4399";
+// const SERVER_ADDRESS = "127.0.0.1:6006";
+
+// 添加路径前缀处理函数 - 移到文件前面使用之前
+const getImagePath = (filename: string | null, sshConfig: boolean) => {
+    if (!filename) return null;
+    // 如果有SSH配置，使用远程路径；否则使用本地路径
+    return sshConfig 
+        ? `/root/autodl-tmp/input/${filename.split('/').pop()}`
+        : path.join(process.cwd(), 'public', 'input', filename.split('/').pop() || '');
+}
 
 export async function POST(req: Request) {
     try {
         const { 
             promptText,
-            mode,
+            mode,  // 现在 mode 可能是 'text2img' | 'sketch2img' | 'souvenir'
             sketchImage,
             sketchStrength,
             shapeReference, 
@@ -21,56 +31,60 @@ export async function POST(req: Request) {
 
         let workflowPath;
         
-        if (mode === 'sketch2img') {
+        // 首先判断生成模式
+        if (mode === 'souvenir') {
+            // 周边设计模式：使用基础文生图工作流
+            workflowPath = path.join(
+                process.cwd(),
+                'comfyui-workflow',
+                'basic-t2i-api-1123.json'
+            );
+        } else if (mode === 'sketch2img') {
             // 手绘灵感发散模式
             workflowPath = path.join(
                 process.cwd(),
                 'comfyui-workflow',
-                'sketch-to-plan-api-1124.json'
+                'sketch-to-plan-api-1123.json'
             );
-        } else {
-            // 原有的文字生成图像模式
+        } else if (mode === 'text2img') {
+            // 文字生成图像模式：根据参考图情况选择工作流
             if (shapeReference && materialReference) {
                 workflowPath = path.join(
                     process.cwd(),
                     'comfyui-workflow',
-                    'image-reference-both-api-1124.json'
+                    'image-reference-both-api-1123.json'
                 );
             } else if (shapeReference || materialReference) {
                 workflowPath = path.join(
                     process.cwd(),
                     'comfyui-workflow',
-                    'image-reference-api-1124.json'
+                    'image-reference-api-1123.json'
                 );
             } else {
                 workflowPath = path.join(
                     process.cwd(),
                     'comfyui-workflow',
-                    'basic-t2i-api-1124.json'
+                    // 'basic-t2i-api-1124.json'
+                    'basic-t2i-api-1123.json'
                 );
             }
         }
 
+        if (!workflowPath) {
+            throw new Error('Invalid mode or workflow configuration');
+        }
+        
         const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
 
         // 更新提示词
         workflow["6"]["inputs"]["text"] = promptText;
 
-        // 添加路径前缀处理函数
-        const getImagePath = (filename: string | null, sshConfig: boolean) => {
-            if (!filename) return null;
-            // 如果有SSH配置，使用远程路径；否则使用本地路径
-            return sshConfig 
-                ? `/root/autodl-tmp/input/${filename.split('/').pop()}`
-                : path.join(process.cwd(), 'public', 'input', filename.split('/').pop() || '');
-        }
-
         if (mode === 'sketch2img') {
-            // 更新手绘图路径和强度
+            // 手绘模式的参数设置
             workflow["13"]["inputs"]["image"] = getImagePath(sketchImage, !!req.headers.get('ssh-config'));
             workflow["18"]["inputs"]["strength"] = sketchStrength || 0.5;
-        } else {
-            // 原有的参考图处理逻辑
+        } else if (mode === 'text2img') {
+            // text2img 模式的参考图处理
             if (shapeReference && materialReference) {
                 workflow["13"]["inputs"]["image"] = getImagePath(shapeReference, !!req.headers.get('ssh-config'));
                 workflow["19"]["inputs"]["image"] = getImagePath(materialReference, !!req.headers.get('ssh-config'));
@@ -83,6 +97,7 @@ export async function POST(req: Request) {
                 workflow["22"]["inputs"]["weight_type"] = shapeReference ? "composition" : "style transfer";
             }
         }
+        // souvenir 模式不需要额外的参数处理
 
         // 生成随机种子
         workflow["3"]["inputs"]["seed"] = Math.floor(Math.random() * 1000000);
