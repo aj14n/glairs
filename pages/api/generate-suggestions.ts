@@ -3,8 +3,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 
 // 配置常量
 const OPENAI_CONFIG = {
-    apiKey: "sk-kmmbxeortmzlNsst371c2e6a92C8489fBd0a722a601565Fd",
-    //   apiKey: "sk-YOUR-KEY-HERE",
+    apiKey: "sk-YOUR-KEY-HERE",
     baseURL: "https://aihubmix.com/v1"
 };
 
